@@ -13,19 +13,19 @@ Installation
 -----
 1. Download C# API Windows SDK from [NoesisGUI Forums](http://www.noesisengine.com/forums/viewtopic.php?f=3&t=91).
 2. Extract it to the folder `\NoesisGUI-SDK\`. The resulting directory tree should look like this:
-    ```
-    NoesisGUI-SDK
-      |--BuildTool
-      |--GLUTWrapper
-      |--IntegrationSample
-      |--NoesisGUI
-    ```
+```
+NoesisGUI-SDK
+  |--BuildTool
+  |--GLUTWrapper
+  |--IntegrationSample
+  |--NoesisGUI
+```
 3. Open `NoesisGUI.MonoGameWrapper.sln` with Visual Studio 2013/2015
 4. Open `NoesisGUI` project properties and add the post build action to copy native `Noesis.dll` to the output libs directory:
-    ```
-    robocopy /XO /NP /NJH /NJS "$(ProjectDir)NoesisGUI" "$(SolutionDir)Libs\Output" /IF Noesis.dll
-    if %errorlevel% gtr 3 (exit %errorlevel%) else (cd .)
-    ```
+```
+robocopy /XO /NP /NJH /NJS "$(ProjectDir)NoesisGUI" "$(SolutionDir)Libs\Output" /IF Noesis.dll
+if %errorlevel% gtr 3 (exit %errorlevel%) else (cd .)
+```
 5. Open context menu on `TestMonoGameNoesisGUI` project and select `Set as StartUp Project`.
 6. Press F5 to launch the example game project.
 7. Please note that the game example project uses pre-built NoesisGUI controls from NoesisGUI SDK (it robocopy them from it on post-build). To create an actual game you should use NoesisGUI Build Tool to build .XAML to .NSB files.
