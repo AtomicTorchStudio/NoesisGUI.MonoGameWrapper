@@ -41,7 +41,7 @@ Roadmap
 Contributing
 -----
 Pull requests are welcome.
-Please make your code complaint with Microsoft recommended coding conventions:
+Please make your code compliant with Microsoft recommended coding conventions:
 * [General Naming Conventions](https://msdn.microsoft.com/en-us/library/ms229045%28v=vs.110%29.aspx) 
 * [C# Coding Conventions](https://msdn.microsoft.com/en-us/library/ff926074.aspx)
 
