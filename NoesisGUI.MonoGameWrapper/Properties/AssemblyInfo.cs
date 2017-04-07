@@ -9,12 +9,12 @@ using System.Runtime.InteropServices;
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
 
-[assembly: AssemblyTitle("NoesisGUIMonoGameWrapper")]
+[assembly: AssemblyTitle("NoesisGUI.MonoGameWrapper")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("")]
+[assembly: AssemblyCompany("AtomicTorch Studio Pte. Ltd.")]
 [assembly: AssemblyProduct("NoesisGUIMonoGameWrapper")]
-[assembly: AssemblyCopyright("MIT License, 2015")]
+[assembly: AssemblyCopyright("(c) 2016-2017 AtomicTorch Studio Pte. Ltd.")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
@@ -39,5 +39,5 @@ using System.Runtime.InteropServices;
 // by using the '*' as shown below:
 // [assembly: AssemblyVersion("1.0.*")]
 
-[assembly: AssemblyVersion("1.0.0.0")]
-[assembly: AssemblyFileVersion("1.0.0.0")]
+[assembly: AssemblyVersion("2.0.0.0")]
+[assembly: AssemblyFileVersion("2.0.0.0")]

@@ -1,126 +1,154 @@
 ﻿namespace TestMonoGameNoesisGUI
 {
-	#region
+    #region
 
-	using Microsoft.Xna.Framework;
-	using Microsoft.Xna.Framework.Graphics;
-	using Microsoft.Xna.Framework.Input;
+    using System;
 
-	using NoesisGUI.MonoGameWrapper;
+    using Microsoft.Xna.Framework;
+    using Microsoft.Xna.Framework.Graphics;
+    using Microsoft.Xna.Framework.Input;
 
-	#endregion
+    using NoesisGUI.MonoGameWrapper;
 
-	/// <summary>
-	///     This is an example MonoGame game using NoesisGUI
-	/// </summary>
-	public class GameWithNoesis : Game
-	{
-		#region Fields
+    #endregion
 
-		GraphicsDeviceManager graphics;
+    /// <summary>
+    /// This is an example MonoGame game using NoesisGUI
+    /// </summary>
+    public class GameWithNoesis : Game
+    {
+        #region Fields
 
-		private MonoGameNoesisGUIWrapper noesisGUIWrapper;
+        readonly GraphicsDeviceManager graphics;
 
-		SpriteBatch spriteBatch;
+        private TimeSpan lastUpdateTotalGameTime;
 
-		#endregion
+        private NoesisWrapper noesisGUIWrapper;
 
-		#region Constructors and Destructors
+        SpriteBatch spriteBatch;
 
-		public GameWithNoesis()
-		{
-			graphics = new GraphicsDeviceManager(this);
-			Content.RootDirectory = "Content";
-		}
+        #endregion
 
-		#endregion
+        #region Constructors and Destructors
 
-		#region Methods
+        public GameWithNoesis()
+        {
+            graphics = new GraphicsDeviceManager(this);
+            this.graphics.GraphicsProfile = GraphicsProfile.HiDef;
+            Content.RootDirectory = "Content";
+        }
 
-		/// <summary>
-		///     This is called when the game should draw itself.
-		/// </summary>
-		/// <param name="gameTime">Provides a snapshot of timing values.</param>
-		protected override void Draw(GameTime gameTime)
-		{
-			this.noesisGUIWrapper.PreRender(gameTime);
+        #endregion
 
-			this.GraphicsDevice.Clear(
-				ClearOptions.Target | ClearOptions.DepthBuffer | ClearOptions.Stencil,
-				Color.CornflowerBlue,
-				1,
-				0);
+        #region Methods
 
-			// TODO: Add your drawing code here
+        /// <summary>
+        /// This is called when the game should draw itself.
+        /// </summary>
+        /// <param name="gameTime">Provides a snapshot of timing values.</param>
+        protected override void Draw(GameTime gameTime)
+        {
+            this.noesisGUIWrapper.PreRender();
 
-			this.noesisGUIWrapper.PostRender();
+            this.GraphicsDevice.Clear(
+                ClearOptions.Target | ClearOptions.DepthBuffer | ClearOptions.Stencil,
+                Color.CornflowerBlue,
+                1,
+                0);
 
-			base.Draw(gameTime);
-		}
+            // TODO: Add your drawing code here
 
-		/// <summary>
-		///     Allows the game to perform any initialization it needs to before starting to run.
-		///     This is where it can query for any required services and load any non-graphic
-		///     related content.  Calling base.Initialize will enumerate through any components
-		///     and initialize them as well.
-		/// </summary>
-		protected override void Initialize()
-		{
-			this.IsMouseVisible = true;
+            this.noesisGUIWrapper.PostRender();
 
-			this.noesisGUIWrapper = new MonoGameNoesisGUIWrapper(
-				this,
-				this.graphics,
-				"TextBox.xaml",
-				stylePath: "NoesisStyle.xaml",
-				dataLocalPath: "Data");
+            base.Draw(gameTime);
+        }
 
-			// TODO: Add your initialization logic here
+        /// <summary>
+        /// Allows the game to perform any initialization it needs to before starting to run.
+        /// This is where it can query for any required services and load any non-graphic
+        /// related content.  Calling base.Initialize will enumerate through any components
+        /// and initialize them as well.
+        /// </summary>
+        protected override void Initialize()
+        {
+            this.IsMouseVisible = true;
 
-			base.Initialize();
-		}
+            // TODO: Add your initialization logic here
 
-		/// <summary>
-		///     LoadContent will be called once per game and is the place to load
-		///     all of your content.
-		/// </summary>
-		protected override void LoadContent()
-		{
-			// Create a new SpriteBatch, which can be used to draw textures.
-			spriteBatch = new SpriteBatch(GraphicsDevice);
+            base.Initialize();
+        }
 
-			// TODO: use this.Content to load your game content here
-		}
+        /// <summary>
+        /// LoadContent will be called once per game and is the place to load
+        /// all of your content.
+        /// </summary>
+        protected override void LoadContent()
+        {
+            // Create a new SpriteBatch, which can be used to draw textures.
+            spriteBatch = new SpriteBatch(GraphicsDevice);
 
-		/// <summary>
-		///     UnloadContent will be called once per game and is the place to unload
-		///     game-specific content.
-		/// </summary>
-		protected override void UnloadContent()
-		{
-			// TODO: Unload any non ContentManager content here
-		}
+            CreateNoesisGUI();
 
-		/// <summary>
-		///     Allows the game to run logic such as updating the world,
-		///     checking for collisions, gathering input, and playing audio.
-		/// </summary>
-		/// <param name="gameTime">Provides a snapshot of timing values.</param>
-		protected override void Update(GameTime gameTime)
-		{
-			if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed
-			    || Keyboard.GetState().IsKeyDown(Keys.Escape))
-			{
-				Exit();
-			}
+            // TODO: use this.Content to load your game content here
+        }
 
-			this.noesisGUIWrapper.Update(gameTime);
+        /// <summary>
+        /// UnloadContent will be called once per game and is the place to unload
+        /// game-specific content.
+        /// </summary>
+        protected override void UnloadContent()
+        {
+            DestroyNoesisGUI();
+            // TODO: Unload any non ContentManager content here
+        }
 
-			// TODO: Add your update logic here
+        /// <summary>
+        /// Allows the game to run logic such as updating the world,
+        /// checking for collisions, gathering input, and playing audio.
+        /// </summary>
+        /// <param name="gameTime">Provides a snapshot of timing values.</param>
+        protected override void Update(GameTime gameTime)
+        {
+            this.lastUpdateTotalGameTime = gameTime.TotalGameTime;
 
-			base.Update(gameTime);
-		}
+            if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed
+                || Keyboard.GetState().IsKeyDown(Keys.Escape))
+            {
+                Exit();
+            }
 
-		#endregion
-	}
+            this.noesisGUIWrapper.Update(gameTime, isWindowActive: this.IsActive);
+
+            // TODO: Add your update logic here
+
+            base.Update(gameTime);
+        }
+
+        private void CreateNoesisGUI()
+        {
+            var config = new NoesisConfig(
+                this.Window,
+                this.graphics,
+                rootXamlFilePath: "TextBox.xaml",
+                themeXamlFilePath: "NoesisStyle.xaml",
+                currentTotalGameTime: this.lastUpdateTotalGameTime);
+            config.SetupInputFromWindows();
+            config.SetupProviderSimpleFolder("Data");
+
+            this.noesisGUIWrapper = new NoesisWrapper(config);
+        }
+
+        private void DestroyNoesisGUI()
+        {
+            if (this.noesisGUIWrapper == null)
+            {
+                return;
+            }
+
+            this.noesisGUIWrapper.Dispose();
+            this.noesisGUIWrapper = null;
+        }
+
+        #endregion
+    }
 }

@@ -71,11 +71,11 @@
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="$(MSBuildExtensionsPath)\MonoGame\v3.0\MonoGame.Content.Builder.targets" />
   <PropertyGroup>
-    <PostBuildEvent>REM copy demo NoesisGUI Data (prebuilt .XAML.NSB files)
-robocopy /S /XO /NP /NJH /NJS /NFL /NDL "$(SolutionDir)\NoesisGUI-SDK\IntegrationSample\Data" "$(TargetDir)\Data"
+    <PostBuildEvent>REM copy demo NoesisGUI Data (.XAML files)
+robocopy /S /XO /NP /NJH /NJS /NFL /NDL "$(SolutionDir)\NoesisGUI-CSharpSDK\Src\Samples\D3D11\Data" "$(TargetDir)\Data"
 
-REM copy output Libs (native Noesis.dll)
-robocopy /S /XO /NP /NJH /NJS /NFL /NDL "$(SolutionDir)\Libs\Output" "$(TargetDir)\"
+REM Copy Noesis.dll (native library)
+copy /Y "$(SolutionDir)\NoesisGUI-CSharpSDK\Bin\windows_x86\Noesis.dll" "$(TargetDir)\Noesis.dll"
 if %25errorlevel%25 gtr 3 (exit %25errorlevel%25) else (cd .)</PostBuildEvent>
   </PropertyGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

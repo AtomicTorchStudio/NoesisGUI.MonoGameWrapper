@@ -22,8 +22,9 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-    <UseVSHostingProcess>true</UseVSHostingProcess>
+    <UseVSHostingProcess>false</UseVSHostingProcess>
     <Prefer32Bit>false</Prefer32Bit>
+    <PlatformTarget>AnyCPU</PlatformTarget>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -33,40 +34,79 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <Prefer32Bit>false</Prefer32Bit>
+    <LangVersion>6</LangVersion>
   </PropertyGroup>
-  <ItemGroup>
-    <Reference Include="MonoGame.Framework, Version=3.4.0.456, Culture=neutral, processorArchitecture=MSIL">
+  <!-- MonoGame local folder -->
+  <ItemGroup Condition="Exists('..\MonoGame\MonoGame.Framework')">
+    <Reference Include="MonoGame.Framework">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\MonoGame\MonoGame.Framework\bin\Windows\AnyCPU\Release\MonoGame.Framework.dll</HintPath>
+    </Reference>
+    <Reference Include="SharpDX">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\MonoGame\MonoGame.Framework\bin\Windows\AnyCPU\Release\SharpDX.dll</HintPath>
+    </Reference>
+    <Reference Include="SharpDX.Direct3D11">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\MonoGame\MonoGame.Framework\bin\Windows\AnyCPU\Release\SharpDX.Direct3D11.dll</HintPath>
+    </Reference>
+    <Reference Include="SharpDX.DXGI">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\MonoGame\MonoGame.Framework\bin\Windows\AnyCPU\Release\SharpDX.DXGI.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+  <!-- MonoGame MSBuild install folder -->
+  <ItemGroup Condition="!Exists('..\MonoGame\MonoGame.Framework')">
+    <Reference Include="MonoGame.Framework">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>$(MSBuildProgramFiles32)\MonoGame\v3.0\Assemblies\Windows\MonoGame.Framework.dll</HintPath>
     </Reference>
-    <Reference Include="SharpDX, Version=2.5.0.0, Culture=neutral, processorArchitecture=MSIL">
+    <Reference Include="SharpDX">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>$(MSBuildProgramFiles32)\MonoGame\v3.0\Assemblies\Windows\SharpDX.dll</HintPath>
     </Reference>
-    <Reference Include="SharpDX.Direct3D11, Version=2.5.0.0, Culture=neutral, processorArchitecture=MSIL">
+    <Reference Include="SharpDX.Direct3D11">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>$(MSBuildProgramFiles32)\MonoGame\v3.0\Assemblies\Windows\SharpDX.Direct3D11.dll</HintPath>
     </Reference>
-    <Reference Include="SharpDX.DXGI, Version=2.5.1.0, Culture=neutral, processorArchitecture=MSIL">
+    <Reference Include="SharpDX.DXGI">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>$(MSBuildProgramFiles32)\MonoGame\v3.0\Assemblies\Windows\SharpDX.DXGI.dll</HintPath>
     </Reference>
-    <Reference Include="System" />
-    <Reference Include="Microsoft.CSharp" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Helpers\DeviceDX11StateHelper.cs" />
-    <Compile Include="MonoGameNoesisGUIWrapper.cs" />
-    <Compile Include="Input\MonoGameNoesisGUIWrapperInputManager.cs" />
-    <Compile Include="Input\NoesisKeyCodes.cs" />
+    <Reference Include="System" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Windows.Forms" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Helpers\DeviceState\DeviceStateHelper.cs" />
+    <Compile Include="Helpers\DeviceState\DeviceStateHelperD3D11.cs" />
+    <Compile Include="Helpers\NoesisTextureHelper.cs" />
+    <Compile Include="Input\SystemSettings\InputSettingsHelper.cs" />
+    <Compile Include="Input\SystemSettings\WinFormsInputSettingsHelper.cs" />
+    <Compile Include="Config\HitTestIgnoreDelegate.cs" />
+    <Compile Include="Input\Devices\Keyboard.cs" />
+    <Compile Include="Helpers\XnaKeysComparer.cs" />
+    <Compile Include="Input\Devices\Mouse.cs" />
+    <Compile Include="Input\VirtualKeys\InputVirtualKeyHelper.cs" />
+    <Compile Include="Input\VirtualKeys\WindowsVirtualKeyHelper.cs" />
+    <Compile Include="NoesisWrapper.cs" />
+    <Compile Include="Input\InputManager.cs" />
+    <Compile Include="Helpers\KeyConverter.cs" />
+    <Compile Include="Config\NoesisConfig.cs" />
+    <Compile Include="Config\BaseNoesisProviderManager.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\NoesisGUI-SDK\NoesisGUI\NoesisGUI.csproj">
-      <Project>{324797A8-3464-4290-A307-2AB238BACCA3}</Project>
-      <Name>NoesisGUI</Name>
+    <ProjectReference Include="..\NoesisGUI-CSharpSDK\Src\NoesisManaged\NoesisManaged.csproj">
+      <Project>{324797a8-3464-4290-a307-2ab238bacca3}</Project>
+      <Name>NoesisManaged</Name>
     </ProjectReference>
   </ItemGroup>
+  <PropertyGroup>
+    <AllowedReferenceRelatedFileExtensions>.pdb</AllowedReferenceRelatedFileExtensions>
+  </PropertyGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
     <PostBuildEvent>

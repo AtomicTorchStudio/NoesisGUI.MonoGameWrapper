@@ -25,8 +25,5 @@ Icon7
 
 *.tmp
 
-/NoesisGUI-CSharpSDK/*
-!/NoesisGUI-CSharpSDK/Extract NoesisGUI SDK here
-
 /Libs/Output
 */Libs/Output
