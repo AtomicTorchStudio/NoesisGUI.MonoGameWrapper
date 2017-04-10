@@ -4,7 +4,7 @@ namespace NoesisGUI.MonoGameWrapper.Helpers.DeviceState
 
     internal abstract class DeviceStateHelper
     {
-        public IDisposable Remember()
+        public DeviceStateRestorer Remember()
         {
             this.Save();
             return new DeviceStateRestorer(this);
@@ -17,11 +17,11 @@ namespace NoesisGUI.MonoGameWrapper.Helpers.DeviceState
         /// <summary>
         /// Disposable structure which calls the state.Restore() method during Dispose().
         /// </summary>
-        private struct DeviceStateRestorer : IDisposable
+        internal struct DeviceStateRestorer : IDisposable
         {
             private readonly DeviceStateHelper state;
 
-            public DeviceStateRestorer(DeviceStateHelper state)
+            internal DeviceStateRestorer(DeviceStateHelper state)
             {
                 this.state = state;
             }
