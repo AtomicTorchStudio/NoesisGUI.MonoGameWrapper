@@ -3,12 +3,14 @@
     #region
 
     using System;
+    using System.IO;
 
     using Microsoft.Xna.Framework;
     using Microsoft.Xna.Framework.Graphics;
     using Microsoft.Xna.Framework.Input;
 
     using NoesisGUI.MonoGameWrapper;
+    using NoesisGUI.MonoGameWrapper.Providers;
 
     #endregion
 
@@ -58,7 +60,7 @@
 
             // TODO: Add your drawing code here
 
-            this.noesisGUIWrapper.PostRender();
+            this.noesisGUIWrapper.Render();
 
             base.Draw(gameTime);
         }
@@ -74,6 +76,8 @@
             this.IsMouseVisible = true;
 
             // TODO: Add your initialization logic here
+
+            this.Window.AllowUserResizing = true;
 
             base.Initialize();
         }
@@ -117,7 +121,9 @@
                 Exit();
             }
 
-            this.noesisGUIWrapper.Update(gameTime, isWindowActive: this.IsActive);
+            this.noesisGUIWrapper.UpdateInput(gameTime, isWindowActive: this.IsActive);
+
+            this.noesisGUIWrapper.Update(gameTime);
 
             // TODO: Add your update logic here
 
@@ -126,14 +132,22 @@
 
         private void CreateNoesisGUI()
         {
+            var rootPath = Path.Combine(Environment.CurrentDirectory, "Data");
+            var providerManager = new NoesisProviderManager(
+                new FolderXamlProvider(rootPath),
+                new FolderFontProvider(rootPath),
+                new FolderTextureProvider(rootPath, this.GraphicsDevice));
+
             var config = new NoesisConfig(
                 this.Window,
                 this.graphics,
-                rootXamlFilePath: "TextBox.xaml",
-                themeXamlFilePath: "NoesisStyle.xaml",
+                providerManager,
+                rootXamlFilePath: "Samples/TextBox.xaml",
+                // uncomment this line to use theme file
+                //themeXamlFilePath: "Themes/WindowsStyle.xaml",
                 currentTotalGameTime: this.lastUpdateTotalGameTime);
+
             config.SetupInputFromWindows();
-            config.SetupProviderSimpleFolder("Data");
 
             this.noesisGUIWrapper = new NoesisWrapper(config);
         }

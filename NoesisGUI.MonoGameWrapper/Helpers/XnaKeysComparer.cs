@@ -1,11 +1,7 @@
 namespace NoesisGUI.MonoGameWrapper.Helpers
 {
-    #region
-
     using System.Collections.Generic;
     using Microsoft.Xna.Framework.Input;
-
-    #endregion
 
     internal class XnaKeysComparer : IEqualityComparer<Keys>
     {

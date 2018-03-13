@@ -3,10 +3,9 @@
     #region
 
     using System;
+    using System.Reflection;
 
     using Microsoft.Xna.Framework.Graphics;
-
-    using Noesis;
 
     using Texture = Noesis.Texture;
 
@@ -14,6 +13,14 @@
 
     public static class NoesisTextureHelper
     {
+        #region Static Fields
+
+        // This is a hack to access native texture
+        private static readonly Lazy<FieldInfo> TextureFieldInfo = new Lazy<FieldInfo>(
+            () => typeof(Texture2D).GetField("_texture", BindingFlags.Instance | BindingFlags.NonPublic));
+
+        #endregion
+
         #region Public Methods and Operators
 
         public static Texture CreateNoesisTexture(Texture2D texture)
@@ -28,9 +35,11 @@
                 throw new Exception("Cannot wrap the disposed texture: " + texture);
             }
 
+            var nativeTexture = (SharpDX.Direct3D11.Texture2D)TextureFieldInfo.Value.GetValue(texture);
+
             return Texture.WrapD3D11Texture(
                 texture,
-                texture.GetNativeTexturePtr(),
+                nativeTexture.NativePointer,
                 texture.Width,
                 texture.Height,
                 texture.LevelCount,
@@ -38,21 +47,9 @@
                 isInverted: false);
         }
 
-        public static TextureSource CreateTextureSource(Texture2D texture)
-        {
-            return new TextureSource(CreateNoesisTexture(texture));
-        }
-
         #endregion
 
         #region Methods
-
-        private static IntPtr GetNativeTexturePtr(this Texture2D texture)
-        {
-            // ai_enabled|AtomicTorch: not implemented because this property is public in our MonoGame framework fork
-            // TODO: could be implemented via reflection
-            throw new NotImplementedException();
-        }
 
         private static Texture.Format GetTextureFormat(Texture2D texture)
         {

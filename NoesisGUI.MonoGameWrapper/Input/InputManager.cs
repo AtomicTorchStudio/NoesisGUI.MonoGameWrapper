@@ -1,15 +1,11 @@
 ﻿namespace NoesisGUI.MonoGameWrapper.Input
 {
-    #region
-
     using System.Collections.Generic;
     using Microsoft.Xna.Framework;
     using Microsoft.Xna.Framework.Input;
     using Noesis;
     using Keyboard = NoesisGUI.MonoGameWrapper.Input.Devices.Keyboard;
     using Mouse = NoesisGUI.MonoGameWrapper.Input.Devices.Mouse;
-
-    #endregion
 
     public class InputManager
     {

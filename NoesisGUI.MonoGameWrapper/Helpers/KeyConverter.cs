@@ -1,13 +1,9 @@
 ﻿namespace NoesisGUI.MonoGameWrapper.Helpers
 {
-    #region
-
     using System.Collections.Generic;
     using System.Runtime.CompilerServices;
     using Microsoft.Xna.Framework.Input;
     using Noesis;
-
-    #endregion
 
     internal static class KeyConverter
     {

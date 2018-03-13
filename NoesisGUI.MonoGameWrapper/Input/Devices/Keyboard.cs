@@ -1,7 +1,5 @@
 namespace NoesisGUI.MonoGameWrapper.Input.Devices
 {
-    #region
-
     using System.Collections.Generic;
     using System.Runtime.CompilerServices;
     using Microsoft.Xna.Framework;
@@ -9,8 +7,6 @@ namespace NoesisGUI.MonoGameWrapper.Input.Devices
     using Noesis;
     using NoesisGUI.MonoGameWrapper.Helpers;
     using NoesisGUI.MonoGameWrapper.Input.VirtualKeys;
-
-    #endregion
 
     internal class Keyboard
     {

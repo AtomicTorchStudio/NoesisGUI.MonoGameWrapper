@@ -1,7 +1,5 @@
 ﻿namespace NoesisGUI.MonoGameWrapper.Input.Devices
 {
-    #region
-
     using System;
     using System.Collections.Generic;
     using Microsoft.Xna.Framework;
@@ -9,8 +7,6 @@
     using Noesis;
     using MouseState = Microsoft.Xna.Framework.Input.MouseState;
     using Point = Noesis.Point;
-
-    #endregion
 
     internal class Mouse
     {
@@ -45,6 +41,8 @@
 
         private TimeSpan totalGameTime;
 
+        private bool isAnyControlUnderMouseCursor;
+
         public Mouse(
             View view,
             Visual uiRendererRoot,
@@ -60,6 +58,9 @@
 
         public void UpdateMouse(GameTime gameTime, bool isWindowActive)
         {
+            // refresh
+            this.isAnyControlUnderMouseCursor = this.CalculateIsAnyControlUnderMouseCursor();
+
             this.totalGameTime = gameTime.TotalGameTime;
 
             if (this.ConsumedButtons.Count > 0)
@@ -104,7 +105,7 @@
 
             if (this.lastScrollWheelValue != scrollWheelValue)
             {
-                if (this.IsAnyControlUnderMouseCursor())
+                if (this.isAnyControlUnderMouseCursor)
                 {
                     var scrollDeltaValue = scrollWheelValue - this.lastScrollWheelValue;
                     this.view.MouseWheel(x, y, scrollDeltaValue);
@@ -142,7 +143,7 @@
             this.previousMouseState = mouseState;
         }
 
-        private bool IsAnyControlUnderMouseCursor()
+        private bool CalculateIsAnyControlUnderMouseCursor()
         {
             var visual =
                 VisualTreeHelper.HitTest(
@@ -151,13 +152,11 @@
                                 .VisualHit as FrameworkElement;
             while (visual != null)
             {
-                if (this.checkIfElementIgnoresHitTest != null)
+                if (this.checkIfElementIgnoresHitTest != null
+                    && !this.checkIfElementIgnoresHitTest(visual))
                 {
-                    if (!this.checkIfElementIgnoresHitTest(visual))
-                    {
-                        // hit test successful and is not ignored
-                        return true;
-                    }
+                    // hit test successful and is not ignored
+                    return true;
                 }
 
                 // travel up - maybe the parent control should capture focus
@@ -180,13 +179,13 @@
 
             if (current == previous)
             {
-                this.TryConsumeKey(buttonId);
+                this.TryConsumeMouseButton(buttonId);
                 return;
             }
 
             //System.Diagnostics.Debug.WriteLine("Mouse button down: " + buttonId);
-            this.view.MouseDown(this.lastX, this.lastY, buttonId);
-            this.TryConsumeKey(buttonId);
+            this.view.MouseButtonDown(this.lastX, this.lastY, buttonId);
+            this.TryConsumeMouseButton(buttonId);
         }
 
         private void ProcessMouseButtonUp(
@@ -201,7 +200,7 @@
 
             if (current == previous)
             {
-                this.TryConsumeKey(buttonId);
+                this.TryConsumeMouseButton(buttonId);
                 return;
             }
 
@@ -215,17 +214,17 @@
             }
 
             // System.Diagnostics.Debug.WriteLine("Mouse button up: " + buttonId);
-            this.view.MouseUp(this.lastX, this.lastY, buttonId);
-
+            this.view.MouseButtonUp(this.lastX, this.lastY, buttonId);
+            
             // record last press time (for double click handling)
             this.lastPressTimeDictionary[buttonId] = this.totalGameTime;
 
-            this.TryConsumeKey(buttonId);
+            this.TryConsumeMouseButton(buttonId);
         }
 
-        private void TryConsumeKey(MouseButton buttonId)
+        private void TryConsumeMouseButton(MouseButton buttonId)
         {
-            if (this.IsAnyControlUnderMouseCursor())
+            if (this.isAnyControlUnderMouseCursor)
             {
                 // consume!
                 this.ConsumedButtons.Add(buttonId);

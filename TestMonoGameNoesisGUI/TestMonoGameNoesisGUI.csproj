@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">x86</Platform>
@@ -14,7 +14,7 @@
     <MonoGamePlatform>Windows</MonoGamePlatform>
     <MonoGameContentBuilderExe>
     </MonoGameContentBuilderExe>
-    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
     <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
@@ -41,6 +41,7 @@
   <PropertyGroup>
     <ApplicationIcon>Icon.ico</ApplicationIcon>
   </PropertyGroup>
+  <PropertyGroup />
   <ItemGroup>
     <Compile Include="GameWithNoesis.cs" />
     <Compile Include="Program.cs" />
@@ -67,12 +68,16 @@
       <Project>{7B629986-9BCF-48F4-AACA-6AA872154C81}</Project>
       <Name>NoesisGUI.MonoGameWrapper</Name>
     </ProjectReference>
+    <ProjectReference Include="..\NoesisGUI-CSharpSDK\Src\NoesisManaged\NoesisManaged.csproj">
+      <Project>{324797a8-3464-4290-a307-2ab238bacca3}</Project>
+      <Name>NoesisManaged</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="$(MSBuildExtensionsPath)\MonoGame\v3.0\MonoGame.Content.Builder.targets" />
   <PropertyGroup>
     <PostBuildEvent>REM copy demo NoesisGUI Data (.XAML files)
-robocopy /S /XO /NP /NJH /NJS /NFL /NDL "$(SolutionDir)\NoesisGUI-CSharpSDK\Src\Samples\D3D11\Data" "$(TargetDir)\Data"
+robocopy /S /XO /NP /NJH /NJS /NFL /NDL "$(SolutionDir)\NoesisGUI-CSharpSDK\Data" "$(TargetDir)\Data"
 
 REM Copy Noesis.dll (native library)
 copy /Y "$(SolutionDir)\NoesisGUI-CSharpSDK\Bin\windows_x86\Noesis.dll" "$(TargetDir)\Noesis.dll"

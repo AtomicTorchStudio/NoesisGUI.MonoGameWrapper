@@ -1,15 +1,15 @@
-﻿namespace NoesisGUI.MonoGameWrapper
+﻿namespace NoesisGUI.MonoGameWrapper.Providers
 {
     using System;
     using Noesis;
 
-    public abstract class BaseNoesisProviderManager : IDisposable
+    public class NoesisProviderManager : IDisposable
     {
         private readonly Provider provider;
 
         private bool isDisposed;
 
-        protected BaseNoesisProviderManager(
+        public NoesisProviderManager(
             XamlProvider xamlProvider,
             FontProvider fontProvider,
             TextureProvider textureProvider)
@@ -22,7 +22,7 @@
             };
         }
 
-        ~BaseNoesisProviderManager()
+        ~NoesisProviderManager()
         {
             this.Dispose();
         }

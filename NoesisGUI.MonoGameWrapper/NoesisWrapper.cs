@@ -1,16 +1,16 @@
 ﻿namespace NoesisGUI.MonoGameWrapper
 {
-    #region
-
     using System;
+    using System.Diagnostics;
     using Microsoft.Xna.Framework;
     using Microsoft.Xna.Framework.Graphics;
     using Noesis;
     using NoesisGUI.MonoGameWrapper.Helpers.DeviceState;
     using NoesisGUI.MonoGameWrapper.Input;
+    using NoesisGUI.MonoGameWrapper.Providers;
     using SharpDX.Direct3D11;
 
-    #endregion
+    using EventArgs = System.EventArgs;
 
     /// <summary>
     /// Wrapper usage:
@@ -20,7 +20,7 @@
     /// - 3.1. wrapper.PreRender(gameTime)
     /// - 3.2. clear graphics device (including stencil buffer)
     /// - 3.3. your game drawing code
-    /// - 3.4. wrapper.PostRender()
+    /// - 3.4. wrapper.Render()
     /// 4. at game UnloadContent() call wrapper.Dispose() method.
     /// Please be sure you have IsMouseVisible=true at the MonoGame Game class instance.
     /// </summary>
@@ -36,15 +36,15 @@
 
         private readonly GraphicsDevice graphicsDevice;
 
-        private readonly BaseNoesisProviderManager providerManager;
+        private readonly NoesisProviderManager providerManager;
 
         private readonly TimeSpan startupTotalGameTime;
-
-        private View.AntialiasingMode antiAliasingMode = View.AntialiasingMode.MSAA;
 
         private InputManager inputManager;
 
         private bool isEventsSubscribed;
+
+        private bool isPPAAEnabled;
 
         private View.TessellationQuality quality = View.TessellationQuality.High;
 
@@ -69,27 +69,19 @@
             this.config = config;
             this.gameWindow = config.GameWindow;
 
-            // not implemented in NoesisGUI yet
             // setup Noesis Debug callbacks
-            //Debug.ExceptionThrown = this.NoesisExceptionThrownHandler;
-            //Debug.ErrorMessageReceived = this.NoesisErrorMessageReceivedHandler;
+            Log.LogCallback = this.NoesisLogCallbackHandler;
 
             this.graphicsDevice = config.Graphics.GraphicsDevice;
-            this.FixAntiAliasingMode(ref this.antiAliasingMode);
             this.deviceD3D11 = (Device)this.graphicsDevice.Handle;
 
             this.deviceState = new DeviceStateHelperD3D11((Device)this.graphicsDevice.Handle);
 
-            // setup resource providerManager
-            if (config.NoesisFileSystemProviderRootFolderPath != null)
-            {
-                GUI.SetResourceProvider(config.NoesisFileSystemProviderRootFolderPath);
-            }
-            else
-            {
-                this.providerManager = config.CreateNoesisProviderManagerDelegate();
-                GUI.SetResourceProvider(this.providerManager.Provider);
-            }
+            this.providerManager = config.NoesisProviderManager;
+            var provider = this.providerManager.Provider;
+            GUI.SetFontProvider(provider.FontProvider);
+            GUI.SetTextureProvider(provider.TextureProvider);
+            GUI.SetXamlProvider(provider.XamlProvider);
 
             // setup theme
             if (config.ThemeXamlFilePath != null)
@@ -101,7 +93,7 @@
                         $"Theme is not found or was not able to load by NoesisGUI: {config.ThemeXamlFilePath}");
                 }
 
-                GUI.SetTheme(themeResourceDictionary);
+                GUI.SetApplicationResources(themeResourceDictionary);
                 this.Theme = themeResourceDictionary;
             }
 
@@ -121,26 +113,7 @@
 
             // call update with zero delta time to prepare the view for rendering
             this.startupTotalGameTime = config.CurrentTotalGameTime;
-            this.Update(new GameTime(this.startupTotalGameTime, elapsedGameTime: TimeSpan.Zero), isWindowActive: true);
-        }
-
-        /// <summary>
-        /// Gets or sets the anti-aliasing mode.
-        /// </summary>
-        public View.AntialiasingMode AntiAliasingMode
-        {
-            get { return this.antiAliasingMode; }
-            set
-            {
-                this.FixAntiAliasingMode(ref value);
-                if (this.antiAliasingMode == value)
-                {
-                    return;
-                }
-
-                this.antiAliasingMode = value;
-                this.ApplyAntialiasingSetting(this.view);
-            }
+            this.Update(new GameTime(this.startupTotalGameTime, elapsedGameTime: TimeSpan.Zero));
         }
 
         /// <summary>
@@ -154,11 +127,29 @@
         public InputManager Input => this.inputManager;
 
         /// <summary>
+        /// Gets or sets the anti-aliasing mode.
+        /// </summary>
+        public bool IsPPAAEnabled
+        {
+            get => this.isPPAAEnabled;
+            set
+            {
+                if (this.isPPAAEnabled == value)
+                {
+                    return;
+                }
+
+                this.isPPAAEnabled = value;
+                this.ApplyAntiAliasingSetting(this.view);
+            }
+        }
+
+        /// <summary>
         /// Gets or sets the tesselation quality.
         /// </summary>
         public View.TessellationQuality Quality
         {
-            get { return this.quality; }
+            get => this.quality;
             set
             {
                 if (this.quality == value)
@@ -176,7 +167,7 @@
         /// </summary>
         public View.RenderFlags RenderFlags
         {
-            get { return this.renderFlags; }
+            get => this.renderFlags;
             set
             {
                 if (this.renderFlags == value)
@@ -199,14 +190,6 @@
             this.Shutdown();
         }
 
-        public void PostRender()
-        {
-            using (this.deviceState.Remember())
-            {
-                this.viewRenderer.Render();
-            }
-        }
-
         public void PreRender()
         {
             using (this.deviceState.Remember())
@@ -219,21 +202,41 @@
             }
         }
 
+        public void Render()
+        {
+            using (this.deviceState.Remember())
+            {
+                this.viewRenderer.Render();
+            }
+        }
+
         /// <summary>
         /// Updates NoesisGUI.
         /// </summary>
         /// <param name="gameTime">Current game time.</param>
-        /// <param name="isWindowActive">Is game focused?</param>
-        public void Update(GameTime gameTime, bool isWindowActive)
+        public void Update(GameTime gameTime)
         {
-            gameTime = new GameTime(gameTime.TotalGameTime - this.startupTotalGameTime, gameTime.ElapsedGameTime);
+            gameTime = this.CalculateRelativeGameTime(gameTime);
             this.view.Update(gameTime.TotalGameTime.TotalSeconds);
+        }
+
+        /// <summary>
+        /// Updates NoesisGUI input.
+        /// </summary>
+        /// <param name="gameTime">Current game time.</param>
+        /// <param name="isWindowActive">Is game focused?</param>
+        public void UpdateInput(GameTime gameTime, bool isWindowActive)
+        {
+            gameTime = this.CalculateRelativeGameTime(gameTime);
             this.inputManager.Update(gameTime, isWindowActive);
         }
 
-        private void ApplyAntialiasingSetting(View view)
+        private void ApplyAntiAliasingSetting(View view)
         {
-            view?.SetAntialiasingMode(this.antiAliasingMode);
+            var ppaa = this.isPPAAEnabled
+                       || this.graphicsDevice.PresentationParameters.MultiSampleCount <= 1;
+
+            view?.SetIsPPAAEnabled(ppaa);
         }
 
         private void ApplyQualitySetting(View view)
@@ -249,6 +252,16 @@
             }
         }
 
+        /// <summary>
+        /// Calculate game time since time of construction of this wrapper object (startup time).
+        /// </summary>
+        /// <param name="gameTime">MonoGame game time.</param>
+        /// <returns>Time since startup of this wrapper object.</returns>
+        private GameTime CalculateRelativeGameTime(GameTime gameTime)
+        {
+            return new GameTime(gameTime.TotalGameTime - this.startupTotalGameTime, gameTime.ElapsedGameTime);
+        }
+
         private View CreateView(string rootXamlPath)
         {
             var controlTreeRoot = (FrameworkElement)GUI.LoadXaml(rootXamlPath);
@@ -261,9 +274,11 @@
             {
                 this.ControlTreeRoot = controlTreeRoot;
                 var view = GUI.CreateView(controlTreeRoot);
-                view.Renderer.InitD3D11(this.deviceD3D11.ImmediateContext.NativePointer, this.config.Options);
+                var renderDeviceD3D11 =
+                    new RenderDeviceD3D11(this.deviceD3D11.ImmediateContext.NativePointer, sRGB: false);
+                view.Renderer.Init(renderDeviceD3D11);
                 this.ApplyQualitySetting(view);
-                this.ApplyAntialiasingSetting(view);
+                this.ApplyAntiAliasingSetting(view);
                 this.ApplyRenderingFlagsSetting(view);
                 return view;
             }
@@ -292,21 +307,22 @@
                 GC.WaitForPendingFinalizers();
 
                 // ensure the view is GC'ollected
-                System.Diagnostics.Debug.Assert(viewWeakRef.Target == null);
+                Debug.Assert(viewWeakRef.Target == null);
             }
         }
 
-        private void DeviceLostHandler(object sender, System.EventArgs eventArgs)
+        private void DeviceLostHandler(object sender, EventArgs eventArgs)
         {
             // TODO: restore this? not sure where it went in NoesisGUI 2.0
             //Noesis.GUI.DeviceLost();
         }
 
-        private void DeviceResetHandler(object sender, System.EventArgs e)
+        private void DeviceResetHandler(object sender, EventArgs e)
         {
             // TODO: restore this? not sure where it went in NoesisGUI 2.0
             //Noesis.GUI.DeviceReset();
             this.UpdateSize();
+            this.ApplyAntiAliasingSetting(this.view);
         }
 
         private void EventsSubscribe()
@@ -335,27 +351,14 @@
             this.isEventsSubscribed = false;
         }
 
-        /// <summary>
-        /// Set PPAA anti-aliasing mode if MSAA is not enabled
-        /// </summary>
-        private void FixAntiAliasingMode(ref View.AntialiasingMode mode)
+        private void NoesisLogCallbackHandler(LogLevel level, string channel, string message)
         {
-            if (mode == View.AntialiasingMode.MSAA
-                && this.graphicsDevice.PresentationParameters.MultiSampleCount <= 1)
+            // NoesisGUI 2.1 doesn't have the exception callback anymore
+            //this.config.OnExceptionThrown?.Invoke(exception);
+            if (level == LogLevel.Error)
             {
-                // MSAA is not enabled - use PPAA in that case
-                mode = View.AntialiasingMode.PPAA;
+                this.config.OnErrorMessageReceived?.Invoke(message);
             }
-        }
-
-        private void NoesisErrorMessageReceivedHandler(string message)
-        {
-            this.config.OnErrorMessageReceived?.Invoke(message);
-        }
-
-        private void NoesisExceptionThrownHandler(Exception exception)
-        {
-            this.config.OnExceptionThrown?.Invoke(exception);
         }
 
         private void Shutdown()
@@ -372,7 +375,7 @@
             this.view.SetSize(viewport.Width, viewport.Height);
         }
 
-        private void WindowClientSizeChangedHandler(object sender, System.EventArgs e)
+        private void WindowClientSizeChangedHandler(object sender, EventArgs e)
         {
             this.UpdateSize();
         }

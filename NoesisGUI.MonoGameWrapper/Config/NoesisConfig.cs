@@ -5,6 +5,7 @@ namespace NoesisGUI.MonoGameWrapper
     using Microsoft.Xna.Framework.Graphics;
     using Noesis;
     using NoesisGUI.MonoGameWrapper.Input.SystemSettings;
+    using NoesisGUI.MonoGameWrapper.Providers;
 
     public class NoesisConfig
     {
@@ -12,10 +13,15 @@ namespace NoesisGUI.MonoGameWrapper
 
         /// <param name="gameWindow">The MonoGame GameWindow instance.</param>
         /// <param name="graphics">Graphics device manager of the game instance.</param>
+        /// <param name="noesisProviderManager">NoesisGUI Provider Manager (create it before calling this method).</param>
         /// <param name="rootXamlFilePath">Local XAML file path - will be used as the UI root element.</param>
-        /// <param name="themeXamlFilePath">(can be null) Local XAML file path - will be used as global ResourceDictionary (UI style).</param>
+        /// <param name="themeXamlFilePath">
+        /// (can be null) Local XAML file path - will be used as global ResourceDictionary (UI
+        /// style).
+        /// </param>
         /// <param name="checkIfElementIgnoresHitTest">
         /// Callback to invoke when element is tested for hit test (if callback returns true hit is ignored).
+        /// It has default implementation so you can skip this.
         /// </param>
         /// <param name="onErrorMessageReceived">Callback to invoke when error message received from NoesisGUI.</param>
         /// <param name="onExceptionThrown">
@@ -26,9 +32,10 @@ namespace NoesisGUI.MonoGameWrapper
         public NoesisConfig(
             GameWindow gameWindow,
             GraphicsDeviceManager graphics,
-            string rootXamlFilePath,
-            string themeXamlFilePath,
+            NoesisProviderManager noesisProviderManager,
             TimeSpan currentTotalGameTime,
+            string rootXamlFilePath,
+            string themeXamlFilePath = null,
             HitTestIgnoreDelegate checkIfElementIgnoresHitTest = null,
             Action<string> onErrorMessageReceived = null,
             Action<Exception> onExceptionThrown = null)
@@ -61,22 +68,15 @@ namespace NoesisGUI.MonoGameWrapper
             this.Graphics = graphics;
             this.RootXamlFilePath = rootXamlFilePath.Replace('/', '\\');
             this.ThemeXamlFilePath = themeXamlFilePath?.Replace('/', '\\');
-            this.CheckIfElementIgnoresHitTest = checkIfElementIgnoresHitTest;
+            this.CheckIfElementIgnoresHitTest =
+                checkIfElementIgnoresHitTest ?? this.DefaultCheckIfElementIgnoresHitTest;
             this.OnErrorMessageReceived = onErrorMessageReceived;
             this.OnExceptionThrown = onExceptionThrown;
             this.CurrentTotalGameTime = currentTotalGameTime;
+            this.NoesisProviderManager = noesisProviderManager;
         }
 
-        /// <summary>
-        /// Noesis <see cref="VGOptions" />. Can be configured only before creating NoesisGUI UI (changes after that are not
-        /// applied).
-        /// Default setting is good enough, do not change if you don't know what're you doing.
-        /// </summary>
-        public VGOptions Options { get; set; } = new VGOptions();
-
         internal HitTestIgnoreDelegate CheckIfElementIgnoresHitTest { get; }
-
-        internal Func<BaseNoesisProviderManager> CreateNoesisProviderManagerDelegate { get; private set; }
 
         internal TimeSpan CurrentTotalGameTime { get; }
 
@@ -90,7 +90,7 @@ namespace NoesisGUI.MonoGameWrapper
 
         internal double InputMouseDoubleClickIntervalSeconds { get; private set; }
 
-        internal string NoesisFileSystemProviderRootFolderPath { get; private set; }
+        internal NoesisProviderManager NoesisProviderManager { get; }
 
         internal Action<string> OnErrorMessageReceived { get; }
 
@@ -129,35 +129,12 @@ namespace NoesisGUI.MonoGameWrapper
                 mouseDoubleClickIntervalSeconds);
         }
 
-        /// <summary>
-        /// Setup provider method - a callback method returning instance of <see cref="BaseNoesisProviderManager" />.
-        /// It's called when NoesisGUI is initialized.
-        /// </summary>
-        /// <param name="createNoesisProviderDelegate"></param>
-        public void SetupProviderManager(Func<BaseNoesisProviderManager> createNoesisProviderDelegate)
-        {
-            this.CreateNoesisProviderManagerDelegate = createNoesisProviderDelegate;
-            this.NoesisFileSystemProviderRootFolderPath = null;
-        }
-
-        /// <summary>
-        /// Setup provider method - simply set the absolute disk folder path to use by NoesisGUI for loading XAML, font and texture
-        /// files.
-        /// </summary>
-        /// <param name="folderPath">Disk folder path (absolute).</param>
-        public void SetupProviderSimpleFolder(string folderPath)
-        {
-            this.NoesisFileSystemProviderRootFolderPath = folderPath;
-            this.CreateNoesisProviderManagerDelegate = null;
-        }
-
         internal void Validate()
         {
-            if (this.CreateNoesisProviderManagerDelegate == null
-                && string.IsNullOrEmpty(this.NoesisFileSystemProviderRootFolderPath))
+            if (this.NoesisProviderManager == null)
             {
                 throw new Exception(
-                    "No NoesisGUI resource provider specified. Please call according method of the "
+                    "No NoesisGUI Provider specified. Please call according method of the "
                     + nameof(NoesisConfig));
             }
 
@@ -171,6 +148,12 @@ namespace NoesisGUI.MonoGameWrapper
             {
                 throw new Exception("NoesisGUI requires GraphicsProfile.HiDef set to MonoGame Graphics Device");
             }
+        }
+
+        private bool DefaultCheckIfElementIgnoresHitTest(Visual visual)
+        {
+            // focusable elements do not ignore hit tests
+            return !(visual as FrameworkElement)?.Focusable ?? false;
         }
     }
 }

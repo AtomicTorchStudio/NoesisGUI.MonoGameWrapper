@@ -1,13 +1,9 @@
 ﻿namespace NoesisGUI.MonoGameWrapper.Input.VirtualKeys
 {
-    #region
-
     using System;
     using System.Runtime.InteropServices;
     using System.Text;
     using System.Windows.Forms;
-
-    #endregion
 
     // See http://stackoverflow.com/a/38787314
     internal class WindowsVirtualKeyHelper : InputVirtualKeyHelper
