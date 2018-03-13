@@ -28,8 +28,6 @@ Installation
 6. Please note that the game example project uses sample XAML files from NoesisGUI SDK (it robocopy them from it on post-build to the game build Data folder. NoesisGUI 2.1 works with XAML files without any preprocessing/building step). You could store XAML files in any folder you want and robocopy them this way. One of the useful approaches is to store them in a WPF class library project which could be opened with Visual Studio to edit XAML with full syntax support and autocomplete. It also could be done as a WPF application project which could be executed independently to verify your UI is working properly (but that will require writing more demonstration logic here). WPF XAML is almost 100% compatible with NoesisGUI (see [docs](http://noesisengine.com/docs)).
 7. Please note that the game example project copies `NoesisGUI-CSharpSDK\Bin\windows_x86\Noesis.dll` during the post-build event. This is a native NoesisGUI library (written in C++) and if you need 64-bit version or support for another platform, you need to copy according library from `NoesisGUI-CSharpSDK\Bin` into the root of the game build folder.
 
-Please note: if want 4K support, you will need to use the latest MonoGame version (3.7 preview) built directly from sources. You will need some code changes as well - add a new issue ticket and I will provide the changes for you.
-
 Roadmap
 -----
 * Add OpenGL support (currently only DirectX 11 is supported).
