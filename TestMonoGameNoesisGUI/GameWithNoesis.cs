@@ -121,13 +121,15 @@
                 Exit();
             }
 
+            // update NoesisGUI input only (clicks, key presses, mouse position, etc)
             this.noesisGUIWrapper.UpdateInput(gameTime, isWindowActive: this.IsActive);
 
-            this.noesisGUIWrapper.Update(gameTime);
-
-            // TODO: Add your update logic here
-
-            base.Update(gameTime);
+            // TODO: Add your game logic update code here
+                                                                        
+            base.Update(gameTime);            
+            
+            // update NoesisGUI after updating game logic (it will perform layout and other operations)
+            this.noesisGUIWrapper.Update(gameTime);                      
         }
 
         private void CreateNoesisGUI()
