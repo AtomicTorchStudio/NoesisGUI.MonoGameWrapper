@@ -29,6 +29,8 @@
 
         private readonly View view;
 
+        private bool isAnyControlUnderMouseCursor;
+
         private bool isLastFrameWasScrolled;
 
         private int lastScrollWheelValue;
@@ -37,11 +39,9 @@
 
         private int lastY;
 
-        private MouseState previousMouseState;
+        private MouseState previousState;
 
         private TimeSpan totalGameTime;
-
-        private bool isAnyControlUnderMouseCursor;
 
         public Mouse(
             View view,
@@ -70,18 +70,20 @@
 
             this.ConsumedDeltaWheel = 0;
 
-            MouseState mouseState;
+            // ReSharper disable once LocalVariableHidesMember
+            var previousState = this.previousState;
+            MouseState state;
             if (isWindowActive)
             {
-                mouseState = Microsoft.Xna.Framework.Input.Mouse.GetState();
+                state = Microsoft.Xna.Framework.Input.Mouse.GetState();
             }
             else
             {
                 // don't read input if the game window is not focused
-                mouseState = new MouseState(
-                    this.previousMouseState.X,
-                    this.previousMouseState.Y,
-                    this.previousMouseState.ScrollWheelValue,
+                state = new MouseState(
+                    previousState.X,
+                    previousState.Y,
+                    previousState.ScrollWheelValue,
                     leftButton: ButtonState.Released,
                     rightButton: ButtonState.Released,
                     middleButton: ButtonState.Released,
@@ -89,9 +91,9 @@
                     xButton2: ButtonState.Released);
             }
 
-            var x = mouseState.X;
-            var y = mouseState.Y;
-            var scrollWheelValue = mouseState.ScrollWheelValue;
+            var x = state.X;
+            var y = state.Y;
+            var scrollWheelValue = state.ScrollWheelValue;
 
             if (this.lastX != x
                 || this.lastY != y
@@ -126,21 +128,15 @@
                 this.ConsumedDeltaWheel = 0;
             }
 
-            this.ProcessMouseButtonDown(MouseButton.Left, mouseState.LeftButton, this.previousMouseState.LeftButton);
-            this.ProcessMouseButtonDown(MouseButton.Right, mouseState.RightButton, this.previousMouseState.RightButton);
-            this.ProcessMouseButtonDown(
-                MouseButton.Middle,
-                mouseState.MiddleButton,
-                this.previousMouseState.MiddleButton);
+            this.ProcessMouseButtonDown(MouseButton.Left, state.LeftButton, previousState.LeftButton);
+            this.ProcessMouseButtonDown(MouseButton.Right, state.RightButton, previousState.RightButton);
+            this.ProcessMouseButtonDown(MouseButton.Middle, state.MiddleButton, previousState.MiddleButton);
 
-            this.ProcessMouseButtonUp(MouseButton.Left, mouseState.LeftButton, this.previousMouseState.LeftButton);
-            this.ProcessMouseButtonUp(MouseButton.Right, mouseState.RightButton, this.previousMouseState.RightButton);
-            this.ProcessMouseButtonUp(
-                MouseButton.Middle,
-                mouseState.MiddleButton,
-                this.previousMouseState.MiddleButton);
+            this.ProcessMouseButtonUp(MouseButton.Left, state.LeftButton, previousState.LeftButton);
+            this.ProcessMouseButtonUp(MouseButton.Right, state.RightButton, previousState.RightButton);
+            this.ProcessMouseButtonUp(MouseButton.Middle, state.MiddleButton, previousState.MiddleButton);
 
-            this.previousMouseState = mouseState;
+            this.previousState = state;
         }
 
         private bool CalculateIsAnyControlUnderMouseCursor()
@@ -177,15 +173,26 @@
                 return;
             }
 
+            this.TryConsumeMouseButton(buttonId);
             if (current == previous)
             {
-                this.TryConsumeMouseButton(buttonId);
+                // state didn't change
                 return;
+            }
+
+            // check double click
+            this.lastPressTimeDictionary.TryGetValue(buttonId, out var lastPressTime);
+            if (this.totalGameTime - lastPressTime < this.doubleClickInterval)
+            {
+                //System.Diagnostics.Debug.WriteLine("Mouse double click: " + buttonId);
+                this.view.MouseDoubleClick(this.lastX, this.lastY, buttonId);
             }
 
             //System.Diagnostics.Debug.WriteLine("Mouse button down: " + buttonId);
             this.view.MouseButtonDown(this.lastX, this.lastY, buttonId);
-            this.TryConsumeMouseButton(buttonId);
+
+            // record last press time (for double click handling)
+            this.lastPressTimeDictionary[buttonId] = this.totalGameTime;
         }
 
         private void ProcessMouseButtonUp(
@@ -198,28 +205,15 @@
                 return;
             }
 
+            this.TryConsumeMouseButton(buttonId);
             if (current == previous)
             {
-                this.TryConsumeMouseButton(buttonId);
+                // state didn't change
                 return;
             }
-
-            // check double click
-            TimeSpan lastPressTime;
-            this.lastPressTimeDictionary.TryGetValue(buttonId, out lastPressTime);
-            if (this.totalGameTime - lastPressTime < this.doubleClickInterval)
-            {
-                // System.Diagnostics.Debug.WriteLine("Mouse double click: " + buttonId);
-                this.view.MouseDoubleClick(this.lastX, this.lastY, buttonId);
-            }
-
-            // System.Diagnostics.Debug.WriteLine("Mouse button up: " + buttonId);
-            this.view.MouseButtonUp(this.lastX, this.lastY, buttonId);
             
-            // record last press time (for double click handling)
-            this.lastPressTimeDictionary[buttonId] = this.totalGameTime;
-
-            this.TryConsumeMouseButton(buttonId);
+            //System.Diagnostics.Debug.WriteLine("Mouse button up: " + buttonId);
+            this.view.MouseButtonUp(this.lastX, this.lastY, buttonId);
         }
 
         private void TryConsumeMouseButton(MouseButton buttonId)
