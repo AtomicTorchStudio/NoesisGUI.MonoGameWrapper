@@ -5,9 +5,7 @@
 
     public class NoesisProviderManager : IDisposable
     {
-        private readonly Provider provider;
-
-        private bool isDisposed;
+        private Provider provider;
 
         public NoesisProviderManager(
             XamlProvider xamlProvider,
@@ -15,34 +13,26 @@
             TextureProvider textureProvider)
         {
             this.provider = new Provider()
-            {
-                XamlProvider = xamlProvider,
-                TextureProvider = textureProvider,
-                FontProvider = fontProvider
-            };
-        }
-
-        ~NoesisProviderManager()
-        {
-            this.Dispose();
+                            {
+                                XamlProvider = xamlProvider,
+                                TextureProvider = textureProvider,
+                                FontProvider = fontProvider
+                            };
         }
 
         internal Provider Provider => this.provider;
 
         public void Dispose()
         {
-            if (this.isDisposed)
+            if (this.provider == null)
             {
                 return;
             }
 
-            this.isDisposed = true;
-
             (this.provider.XamlProvider as IDisposable)?.Dispose();
             (this.provider.FontProvider as IDisposable)?.Dispose();
             (this.provider.TextureProvider as IDisposable)?.Dispose();
-
-            GC.SuppressFinalize(this);
+            this.provider = null;
         }
     }
 }

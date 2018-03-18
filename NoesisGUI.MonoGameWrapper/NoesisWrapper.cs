@@ -15,7 +15,10 @@
     /// <summary>
     /// Wrapper usage:
     /// 1. at game LoadContent() create wrapper instance
-    /// 2. at game Update() invoke wrapper.Update(gameTime)
+    /// 2. at game Update() invoke:
+    /// - 2.1. wrapper.UpdateInput(gameTime)
+    /// - 2.2. your game update (game logic)
+    /// - 2.3. wrapper.Update(gameTime)
     /// 3. at game Draw() invoke:
     /// - 3.1. wrapper.PreRender(gameTime)
     /// - 3.2. clear graphics device (including stencil buffer)
@@ -36,8 +39,6 @@
 
         private readonly GraphicsDevice graphicsDevice;
 
-        private readonly NoesisProviderManager providerManager;
-
         private readonly TimeSpan startupTotalGameTime;
 
         private InputManager inputManager;
@@ -45,6 +46,8 @@
         private bool isEventsSubscribed;
 
         private bool isPPAAEnabled;
+
+        private NoesisProviderManager providerManager;
 
         private View.TessellationQuality quality = View.TessellationQuality.High;
 
@@ -365,8 +368,9 @@
         {
             this.DestroyRoot();
             this.Theme = null;
+            this.providerManager.Dispose();
+            this.providerManager = null;
             GUI.UnregisterNativeTypes();
-            this.providerManager?.Dispose();
         }
 
         private void UpdateSize()
