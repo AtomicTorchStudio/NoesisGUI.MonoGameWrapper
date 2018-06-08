@@ -25,7 +25,7 @@
 
         private TimeSpan lastUpdateTotalGameTime;
 
-        private NoesisWrapper noesisGUIWrapper;
+        private NoesisWrapper noesisWrapper;
 
         SpriteBatch spriteBatch;
 
@@ -50,7 +50,7 @@
         /// <param name="gameTime">Provides a snapshot of timing values.</param>
         protected override void Draw(GameTime gameTime)
         {
-            this.noesisGUIWrapper.PreRender();
+            this.noesisWrapper.PreRender();
 
             this.GraphicsDevice.Clear(
                 ClearOptions.Target | ClearOptions.DepthBuffer | ClearOptions.Stencil,
@@ -60,7 +60,7 @@
 
             // TODO: Add your drawing code here
 
-            this.noesisGUIWrapper.Render();
+            this.noesisWrapper.Render();
 
             base.Draw(gameTime);
         }
@@ -122,14 +122,14 @@
             }
 
             // update NoesisGUI input only (clicks, key presses, mouse position, etc)
-            this.noesisGUIWrapper.UpdateInput(gameTime, isWindowActive: this.IsActive);
+            this.noesisWrapper.UpdateInput(gameTime, isWindowActive: this.IsActive);
 
             // TODO: Add your game logic update code here
                                                                         
             base.Update(gameTime);            
             
             // update NoesisGUI after updating game logic (it will perform layout and other operations)
-            this.noesisGUIWrapper.Update(gameTime);                      
+            this.noesisWrapper.Update(gameTime);                      
         }
 
         private void CreateNoesisGUI()
@@ -152,18 +152,19 @@
 
             config.SetupInputFromWindows();
 
-            this.noesisGUIWrapper = new NoesisWrapper(config);
+            this.noesisWrapper = new NoesisWrapper(config);
+            this.noesisWrapper.View.IsPPAAEnabled = true;
         }
 
         private void DestroyNoesisGUI()
         {
-            if (this.noesisGUIWrapper == null)
+            if (this.noesisWrapper == null)
             {
                 return;
             }
 
-            this.noesisGUIWrapper.Dispose();
-            this.noesisGUIWrapper = null;
+            this.noesisWrapper.Dispose();
+            this.noesisWrapper = null;
         }
 
         #endregion
