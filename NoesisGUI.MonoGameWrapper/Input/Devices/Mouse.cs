@@ -17,6 +17,8 @@
         /// </summary>
         private readonly HitTestIgnoreDelegate checkIfElementIgnoresHitTest;
 
+        private readonly FrameworkElement controlTreeRoot;
+
         private readonly TimeSpan doubleClickInterval;
 
         /// <summary>
@@ -25,13 +27,15 @@
         private readonly Dictionary<MouseButton, TimeSpan> lastPressTimeDictionary =
             new Dictionary<MouseButton, TimeSpan>();
 
-        private readonly Visual uiRendererRoot;
+        private readonly Visual rootVisual;
 
         private readonly View view;
 
         private bool isAnyControlUnderMouseCursor;
 
         private bool isLastFrameWasScrolled;
+
+        private readonly bool isProcessMiddleButton;
 
         private int lastScrollWheelValue;
 
@@ -45,13 +49,17 @@
 
         public Mouse(
             View view,
-            Visual uiRendererRoot,
+            Visual rootVisual,
+            FrameworkElement controlTreeRoot,
             NoesisConfig config)
         {
             this.view = view;
-            this.doubleClickInterval = TimeSpan.FromSeconds(config.InputMouseDoubleClickIntervalSeconds);
-            this.uiRendererRoot = uiRendererRoot;
+            this.rootVisual = rootVisual;
+            this.controlTreeRoot = controlTreeRoot;
+
             this.checkIfElementIgnoresHitTest = config.CheckIfElementIgnoresHitTest;
+            this.doubleClickInterval = TimeSpan.FromSeconds(config.InputMouseDoubleClickIntervalSeconds);
+            this.isProcessMiddleButton = config.IsProcessMouseMiddleButton;
         }
 
         public int ConsumedDeltaWheel { get; private set; }
@@ -59,7 +67,7 @@
         public void UpdateMouse(GameTime gameTime, bool isWindowActive)
         {
             // refresh
-            this.isAnyControlUnderMouseCursor = this.CalculateIsAnyControlUnderMouseCursor();
+            this.isAnyControlUnderMouseCursor = this.CheckIsAnyControlUnderMouseCursor();
 
             this.totalGameTime = gameTime.TotalGameTime;
 
@@ -130,37 +138,56 @@
 
             this.ProcessMouseButtonDown(MouseButton.Left, state.LeftButton, previousState.LeftButton);
             this.ProcessMouseButtonDown(MouseButton.Right, state.RightButton, previousState.RightButton);
-            this.ProcessMouseButtonDown(MouseButton.Middle, state.MiddleButton, previousState.MiddleButton);
+            if (this.isProcessMiddleButton)
+            {
+                this.ProcessMouseButtonDown(MouseButton.Middle, state.MiddleButton, previousState.MiddleButton);
+            }
 
             this.ProcessMouseButtonUp(MouseButton.Left, state.LeftButton, previousState.LeftButton);
             this.ProcessMouseButtonUp(MouseButton.Right, state.RightButton, previousState.RightButton);
-            this.ProcessMouseButtonUp(MouseButton.Middle, state.MiddleButton, previousState.MiddleButton);
+            if (this.isProcessMiddleButton)
+            {
+                this.ProcessMouseButtonUp(MouseButton.Middle, state.MiddleButton, previousState.MiddleButton);
+            }
 
             this.previousState = state;
         }
 
-        private bool CalculateIsAnyControlUnderMouseCursor()
+        private bool CheckIsAnyControlUnderMouseCursor()
         {
-            var visual =
-                VisualTreeHelper.HitTest(
-                                    this.uiRendererRoot,
-                                    new Point(this.lastX, this.lastY))
-                                .VisualHit as FrameworkElement;
-            while (visual != null)
+            using (var hitTestResult = VisualTreeHelper.HitTest(
+                this.rootVisual,
+                new Point(this.lastX, this.lastY)))
             {
-                if (this.checkIfElementIgnoresHitTest != null
-                    && !this.checkIfElementIgnoresHitTest(visual))
+                var visual = hitTestResult.VisualHit as FrameworkElement;
+                // ensure that there is no IsHitTestVisible==False parent controls
+                while (visual != null)
                 {
-                    // hit test successful and is not ignored
-                    return true;
+                    if (visual == this.controlTreeRoot)
+                    {
+                        // hit test is not ignored (we're at root)
+                        return true;
+                    }
+
+                    if (this.checkIfElementIgnoresHitTest(visual))
+                    {
+                        // hit test ignored
+                        return false;
+                    }
+
+                    if (visual is Popup
+                        || visual is ContextMenu)
+                    {
+                        // hit test is not ignored (we're at Popup/ContextMenu root)
+                        return true;
+                    }
+
+                    // travel up - maybe the parent control should capture focus
+                    visual = visual.Parent ?? VisualTreeHelper.GetParent(visual) as FrameworkElement;
                 }
 
-                // travel up - maybe the parent control should capture focus
-                visual = visual.Parent ?? VisualTreeHelper.GetParent(visual) as FrameworkElement;
-                //Console.WriteLine("Is consumed: " + result + " hit: " + visual + " name: " + (visual as FrameworkElement)?.Name);
+                return false;
             }
-
-            return false;
         }
 
         private void ProcessMouseButtonDown(
@@ -180,19 +207,25 @@
                 return;
             }
 
-            // check double click
-            this.lastPressTimeDictionary.TryGetValue(buttonId, out var lastPressTime);
-            if (this.totalGameTime - lastPressTime < this.doubleClickInterval)
+            if (buttonId == MouseButton.Left)
             {
-                //System.Diagnostics.Debug.WriteLine("Mouse double click: " + buttonId);
-                this.view.MouseDoubleClick(this.lastX, this.lastY, buttonId);
+                // check double click (NoesisGUI crashes if we check for double click for a mouse button other than the left one)
+                this.lastPressTimeDictionary.TryGetValue(buttonId, out var lastPressTime);
+                if (this.totalGameTime - lastPressTime < this.doubleClickInterval)
+                {
+                    //System.Diagnostics.Debug.WriteLine("Mouse double click: " + buttonId);
+                    this.view.MouseDoubleClick(this.lastX, this.lastY, buttonId);
+                }
             }
 
             //System.Diagnostics.Debug.WriteLine("Mouse button down: " + buttonId);
             this.view.MouseButtonDown(this.lastX, this.lastY, buttonId);
 
-            // record last press time (for double click handling)
-            this.lastPressTimeDictionary[buttonId] = this.totalGameTime;
+            if (buttonId == MouseButton.Left)
+            {
+                // record last press time (for double click handling)
+                this.lastPressTimeDictionary[buttonId] = this.totalGameTime;
+            }
         }
 
         private void ProcessMouseButtonUp(
@@ -211,7 +244,7 @@
                 // state didn't change
                 return;
             }
-            
+
             //System.Diagnostics.Debug.WriteLine("Mouse button up: " + buttonId);
             this.view.MouseButtonUp(this.lastX, this.lastY, buttonId);
         }

@@ -29,16 +29,26 @@ namespace NoesisGUI.MonoGameWrapper
         /// handler, etc).
         /// </param>
         /// <param name="currentTotalGameTime">Current game time (needed to do proper Update() calls).</param>
+        /// <param name="isEnableDirectionalNavigation">
+        /// Is directional (arrow) keys navigation should be enabled? If it's disabled (by default)
+        /// arrow key presses will be not passed to NoesisGUI unless it's focused on a textbox.
+        /// </param>
+        /// <param name="isProcessMouseMiddleButton">
+        /// Enable processing of the middle (scrollwheel) mouse button (disabled by
+        /// default).
+        /// </param>
         public NoesisConfig(
             GameWindow gameWindow,
             GraphicsDeviceManager graphics,
             NoesisProviderManager noesisProviderManager,
-            TimeSpan currentTotalGameTime,
             string rootXamlFilePath,
-            string themeXamlFilePath = null,
+            string themeXamlFilePath,
+            TimeSpan currentTotalGameTime,
             HitTestIgnoreDelegate checkIfElementIgnoresHitTest = null,
             Action<string> onErrorMessageReceived = null,
-            Action<Exception> onExceptionThrown = null)
+            Action<Exception> onExceptionThrown = null,
+            bool isEnableDirectionalNavigation = false,
+            bool isProcessMouseMiddleButton = false)
         {
             if (string.IsNullOrEmpty(rootXamlFilePath))
             {
@@ -47,34 +57,24 @@ namespace NoesisGUI.MonoGameWrapper
                     "File path to the root xaml element cannot be null");
             }
 
-            //if (string.IsNullOrEmpty(themeXamlFilePath))
-            //{
-            //    throw new ArgumentNullException(
-            //        nameof(themeXamlFilePath),
-            //        "File path to the theme xaml element cannot be null");
-            //}
+            this.GameWindow = gameWindow ?? throw new ArgumentNullException(nameof(gameWindow));
+            this.Graphics = graphics ?? throw new ArgumentNullException(nameof(graphics));
 
-            if (gameWindow == null)
-            {
-                throw new ArgumentNullException(nameof(gameWindow));
-            }
-
-            if (graphics == null)
-            {
-                throw new ArgumentNullException(nameof(graphics));
-            }
-
-            this.GameWindow = gameWindow;
-            this.Graphics = graphics;
             this.RootXamlFilePath = rootXamlFilePath.Replace('/', '\\');
             this.ThemeXamlFilePath = themeXamlFilePath?.Replace('/', '\\');
-            this.CheckIfElementIgnoresHitTest =
-                checkIfElementIgnoresHitTest ?? this.DefaultCheckIfElementIgnoresHitTest;
+
+            this.CheckIfElementIgnoresHitTest = checkIfElementIgnoresHitTest
+                                                ?? this.DefaultCheckIfElementIgnoresHitTest;
+
             this.OnErrorMessageReceived = onErrorMessageReceived;
             this.OnExceptionThrown = onExceptionThrown;
             this.CurrentTotalGameTime = currentTotalGameTime;
+            this.IsProcessMouseMiddleButton = isProcessMouseMiddleButton;
             this.NoesisProviderManager = noesisProviderManager;
+            this.IsEnableDirectionalNavigation = isEnableDirectionalNavigation;
         }
+
+        public bool IsEnableDirectionalNavigation { get; }
 
         internal HitTestIgnoreDelegate CheckIfElementIgnoresHitTest { get; }
 
@@ -89,6 +89,8 @@ namespace NoesisGUI.MonoGameWrapper
         internal double InputKeyRepeatIntervalSeconds { get; private set; }
 
         internal double InputMouseDoubleClickIntervalSeconds { get; private set; }
+
+        internal bool IsProcessMouseMiddleButton { get; }
 
         internal NoesisProviderManager NoesisProviderManager { get; }
 
@@ -113,15 +115,11 @@ namespace NoesisGUI.MonoGameWrapper
 
         public void SetupInputFromWindows()
         {
-            double keyRepeatDelaySeconds,
-                   keyRepeatIntervalSeconds,
-                   mouseDoubleClickIntervalSeconds;
-
             InputSettingsHelper.GetPlatform()
                                .GetSystemInputSettings(
-                                   out keyRepeatDelaySeconds,
-                                   out keyRepeatIntervalSeconds,
-                                   out mouseDoubleClickIntervalSeconds);
+                                   out var keyRepeatDelaySeconds,
+                                   out var keyRepeatIntervalSeconds,
+                                   out var mouseDoubleClickIntervalSeconds);
 
             this.SetupInput(
                 keyRepeatDelaySeconds,
@@ -152,8 +150,14 @@ namespace NoesisGUI.MonoGameWrapper
 
         private bool DefaultCheckIfElementIgnoresHitTest(Visual visual)
         {
-            // focusable elements do not ignore hit tests
-            return !(visual as FrameworkElement)?.Focusable ?? false;
+            if (visual is UIElement uiElement
+                && !uiElement.IsHitTestVisible)
+            {
+                // ignores hit test
+                return true;
+            }
+
+            return false;
         }
     }
 }

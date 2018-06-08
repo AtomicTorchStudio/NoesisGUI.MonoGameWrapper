@@ -4,11 +4,11 @@
 
     public abstract class InputVirtualKeyHelper
     {
-        public abstract string KeyCodeToUnicode(Keys key);
-
         public static InputVirtualKeyHelper GetPlatform()
         {
             return WindowsVirtualKeyHelper.Instance;
         }
+
+        public abstract string KeyCodeToUnicode(Keys key);
     }
 }

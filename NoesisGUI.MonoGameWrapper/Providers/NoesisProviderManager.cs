@@ -13,11 +13,11 @@
             TextureProvider textureProvider)
         {
             this.provider = new Provider()
-                            {
-                                XamlProvider = xamlProvider,
-                                TextureProvider = textureProvider,
-                                FontProvider = fontProvider
-                            };
+            {
+                XamlProvider = xamlProvider,
+                TextureProvider = textureProvider,
+                FontProvider = fontProvider
+            };
         }
 
         internal Provider Provider => this.provider;

@@ -5,12 +5,10 @@
     using Microsoft.Xna.Framework;
     using Microsoft.Xna.Framework.Graphics;
     using Noesis;
-    using NoesisGUI.MonoGameWrapper.Helpers.DeviceState;
     using NoesisGUI.MonoGameWrapper.Input;
     using NoesisGUI.MonoGameWrapper.Providers;
-    using SharpDX.Direct3D11;
 
-    using EventArgs = System.EventArgs;
+    using EventArgs = Noesis.EventArgs;
 
     /// <summary>
     /// Wrapper usage:
@@ -31,31 +29,15 @@
     {
         private readonly NoesisConfig config;
 
-        private readonly Device deviceD3D11;
-
-        private readonly DeviceStateHelper deviceState;
-
         private readonly GameWindow gameWindow;
 
         private readonly GraphicsDevice graphicsDevice;
 
-        private readonly TimeSpan startupTotalGameTime;
-
         private InputManager inputManager;
-
-        private bool isEventsSubscribed;
-
-        private bool isPPAAEnabled;
 
         private NoesisProviderManager providerManager;
 
-        private View.TessellationQuality quality = View.TessellationQuality.High;
-
-        private View.RenderFlags renderFlags;
-
-        private View view;
-
-        private Renderer viewRenderer;
+        private NoesisViewWrapper view;
 
         static NoesisWrapper()
         {
@@ -76,10 +58,6 @@
             Log.LogCallback = this.NoesisLogCallbackHandler;
 
             this.graphicsDevice = config.Graphics.GraphicsDevice;
-            this.deviceD3D11 = (Device)this.graphicsDevice.Handle;
-
-            this.deviceState = new DeviceStateHelperD3D11((Device)this.graphicsDevice.Handle);
-
             this.providerManager = config.NoesisProviderManager;
             var provider = this.providerManager.Provider;
             GUI.SetFontProvider(provider.FontProvider);
@@ -101,22 +79,21 @@
             }
 
             // create and prepare view
-            this.view = this.CreateView(config.RootXamlFilePath);
-            this.viewRenderer = this.view.Renderer;
+            var controlTreeRoot = (FrameworkElement)GUI.LoadXaml(config.RootXamlFilePath);
+            this.ControlTreeRoot = controlTreeRoot
+                                   ?? throw new Exception(
+                                       $"UI file \"{config.RootXamlFilePath}\" is not found - cannot initialize UI");
+
+            this.view = new NoesisViewWrapper(
+                controlTreeRoot,
+                this.graphicsDevice,
+                this.config.CurrentTotalGameTime);
             this.UpdateSize();
 
-            // prepare input
-            this.inputManager = new InputManager(
-                this.view,
-                this.ControlTreeRoot,
-                config);
+            this.inputManager = this.view.CreateInputManager(config);
 
-            // subscribe to XNA events
+            // subscribe to MonoGame events
             this.EventsSubscribe();
-
-            // call update with zero delta time to prepare the view for rendering
-            this.startupTotalGameTime = config.CurrentTotalGameTime;
-            this.Update(new GameTime(this.startupTotalGameTime, elapsedGameTime: TimeSpan.Zero));
         }
 
         /// <summary>
@@ -130,63 +107,11 @@
         public InputManager Input => this.inputManager;
 
         /// <summary>
-        /// Gets or sets the anti-aliasing mode.
-        /// </summary>
-        public bool IsPPAAEnabled
-        {
-            get => this.isPPAAEnabled;
-            set
-            {
-                if (this.isPPAAEnabled == value)
-                {
-                    return;
-                }
-
-                this.isPPAAEnabled = value;
-                this.ApplyAntiAliasingSetting(this.view);
-            }
-        }
-
-        /// <summary>
-        /// Gets or sets the tesselation quality.
-        /// </summary>
-        public View.TessellationQuality Quality
-        {
-            get => this.quality;
-            set
-            {
-                if (this.quality == value)
-                {
-                    return;
-                }
-
-                this.quality = value;
-                this.ApplyQualitySetting(this.view);
-            }
-        }
-
-        /// <summary>
-        /// Gets or sets the render flags.
-        /// </summary>
-        public View.RenderFlags RenderFlags
-        {
-            get => this.renderFlags;
-            set
-            {
-                if (this.renderFlags == value)
-                {
-                    return;
-                }
-
-                this.renderFlags = value;
-                this.ApplyRenderingFlagsSetting(this.view);
-            }
-        }
-
-        /// <summary>
         /// Gets resource dictionary of theme.
         /// </summary>
         public ResourceDictionary Theme { get; private set; }
+
+        public NoesisViewWrapper View => this.view;
 
         public void Dispose()
         {
@@ -195,22 +120,12 @@
 
         public void PreRender()
         {
-            using (this.deviceState.Remember())
-            {
-                this.viewRenderer.UpdateRenderTree();
-                if (this.viewRenderer.NeedsOffscreen())
-                {
-                    this.viewRenderer.RenderOffscreen();
-                }
-            }
+            this.view.PreRender();
         }
 
         public void Render()
         {
-            using (this.deviceState.Remember())
-            {
-                this.viewRenderer.Render();
-            }
+            this.view.Render();
         }
 
         /// <summary>
@@ -219,8 +134,7 @@
         /// <param name="gameTime">Current game time.</param>
         public void Update(GameTime gameTime)
         {
-            gameTime = this.CalculateRelativeGameTime(gameTime);
-            this.view.Update(gameTime.TotalGameTime.TotalSeconds);
+            this.view.Update(gameTime);
         }
 
         /// <summary>
@@ -230,61 +144,7 @@
         /// <param name="isWindowActive">Is game focused?</param>
         public void UpdateInput(GameTime gameTime, bool isWindowActive)
         {
-            gameTime = this.CalculateRelativeGameTime(gameTime);
             this.inputManager.Update(gameTime, isWindowActive);
-        }
-
-        private void ApplyAntiAliasingSetting(View view)
-        {
-            var ppaa = this.isPPAAEnabled
-                       || this.graphicsDevice.PresentationParameters.MultiSampleCount <= 1;
-
-            view?.SetIsPPAAEnabled(ppaa);
-        }
-
-        private void ApplyQualitySetting(View view)
-        {
-            view?.SetTessellationQuality(this.quality);
-        }
-
-        private void ApplyRenderingFlagsSetting(View view)
-        {
-            if (this.renderFlags != 0)
-            {
-                view?.SetFlags(this.renderFlags);
-            }
-        }
-
-        /// <summary>
-        /// Calculate game time since time of construction of this wrapper object (startup time).
-        /// </summary>
-        /// <param name="gameTime">MonoGame game time.</param>
-        /// <returns>Time since startup of this wrapper object.</returns>
-        private GameTime CalculateRelativeGameTime(GameTime gameTime)
-        {
-            return new GameTime(gameTime.TotalGameTime - this.startupTotalGameTime, gameTime.ElapsedGameTime);
-        }
-
-        private View CreateView(string rootXamlPath)
-        {
-            var controlTreeRoot = (FrameworkElement)GUI.LoadXaml(rootXamlPath);
-            if (controlTreeRoot == null)
-            {
-                throw new Exception($"UI file \"{rootXamlPath}\" is not found - cannot initialize GUI.");
-            }
-
-            using (this.deviceState.Remember())
-            {
-                this.ControlTreeRoot = controlTreeRoot;
-                var view = GUI.CreateView(controlTreeRoot);
-                var renderDeviceD3D11 =
-                    new RenderDeviceD3D11(this.deviceD3D11.ImmediateContext.NativePointer, sRGB: false);
-                view.Renderer.Init(renderDeviceD3D11);
-                this.ApplyQualitySetting(view);
-                this.ApplyAntiAliasingSetting(view);
-                this.ApplyRenderingFlagsSetting(view);
-                return view;
-            }
         }
 
         private void DestroyRoot()
@@ -297,61 +157,45 @@
 
             this.EventsUnsubscribe();
 
-            using (this.deviceState.Remember())
-            {
-                this.viewRenderer.Shutdown();
-                this.viewRenderer = null;
-                var viewWeakRef = new WeakReference(this.view);
-                this.view = null;
-                this.inputManager = null;
-                this.ControlTreeRoot = null;
+            this.view.Shutdown();
+            this.view = null;
+            var viewWeakRef = new WeakReference(this.view);
+            this.view = null;
+            this.inputManager = null;
+            this.ControlTreeRoot = null;
 
-                GC.Collect();
-                GC.WaitForPendingFinalizers();
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
 
-                // ensure the view is GC'ollected
-                Debug.Assert(viewWeakRef.Target == null);
-            }
+            // ensure the view is GC'ollected
+            Debug.Assert(viewWeakRef.Target == null);
         }
 
-        private void DeviceLostHandler(object sender, EventArgs eventArgs)
+        private void DeviceLostHandler(object sender, System.EventArgs args)
         {
             // TODO: restore this? not sure where it went in NoesisGUI 2.0
             //Noesis.GUI.DeviceLost();
         }
 
-        private void DeviceResetHandler(object sender, EventArgs e)
+        private void DeviceResetHandler(object sender, System.EventArgs eventArgs)
         {
             // TODO: restore this? not sure where it went in NoesisGUI 2.0
             //Noesis.GUI.DeviceReset();
             this.UpdateSize();
-            this.ApplyAntiAliasingSetting(this.view);
         }
 
         private void EventsSubscribe()
         {
-            if (this.isEventsSubscribed)
-            {
-                throw new Exception("Events already subscribed");
-            }
-
             this.gameWindow.ClientSizeChanged += this.WindowClientSizeChangedHandler;
             this.graphicsDevice.DeviceReset += this.DeviceResetHandler;
             this.graphicsDevice.DeviceLost += this.DeviceLostHandler;
-            this.isEventsSubscribed = true;
         }
 
         private void EventsUnsubscribe()
         {
-            if (!this.isEventsSubscribed)
-            {
-                return;
-            }
-
             this.gameWindow.ClientSizeChanged -= this.WindowClientSizeChangedHandler;
             this.graphicsDevice.DeviceReset -= this.DeviceResetHandler;
             this.graphicsDevice.DeviceLost -= this.DeviceLostHandler;
-            this.isEventsSubscribed = false;
         }
 
         private void NoesisLogCallbackHandler(LogLevel level, string channel, string message)
@@ -376,10 +220,10 @@
         private void UpdateSize()
         {
             var viewport = this.graphicsDevice.Viewport;
-            this.view.SetSize(viewport.Width, viewport.Height);
+            this.view.SetSize((ushort)viewport.Width, (ushort)viewport.Height);
         }
 
-        private void WindowClientSizeChangedHandler(object sender, EventArgs e)
+        private void WindowClientSizeChangedHandler(object sender, System.EventArgs eventArgs)
         {
             this.UpdateSize();
         }

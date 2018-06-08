@@ -145,6 +145,7 @@
                 this.graphics,
                 providerManager,
                 rootXamlFilePath: "Samples/TextBox.xaml",
+                themeXamlFilePath: null,
                 // uncomment this line to use theme file
                 //themeXamlFilePath: "Themes/WindowsStyle.xaml",
                 currentTotalGameTime: this.lastUpdateTotalGameTime);

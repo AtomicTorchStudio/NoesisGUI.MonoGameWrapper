@@ -12,11 +12,16 @@ namespace NoesisGUI.MonoGameWrapper.Input.Devices
     {
         public static readonly Keys[] EmptyKeys = new Keys[0];
 
-        private static readonly InputVirtualKeyHelper VirtualKeyHelper = InputVirtualKeyHelper.GetPlatform();
+        private static readonly InputVirtualKeyHelper VirtualKeyHelper
+            = InputVirtualKeyHelper.GetPlatform();
 
-        public readonly ICollection<Keys> ConsumedKeys = new List<Keys>();
+        public readonly ICollection<Keys> ConsumedKeys
+            = new List<Keys>();
 
-        private readonly Dictionary<Keys, float> heldKeysTime = new Dictionary<Keys, float>(XnaKeysComparer.Instance);
+        private readonly Dictionary<Keys, double> heldKeysTime
+            = new Dictionary<Keys, double>(XnaKeysComparer.Instance);
+
+        private readonly bool isEnableDirectionalNavigation;
 
         private readonly float keyRepeatDelaySeconds;
 
@@ -26,9 +31,11 @@ namespace NoesisGUI.MonoGameWrapper.Input.Devices
 
         private readonly View view;
 
-        private HashSet<Keys> currentKeys = new HashSet<Keys>(XnaKeysComparer.Instance);
+        private HashSet<Keys> currentKeys
+            = new HashSet<Keys>(XnaKeysComparer.Instance);
 
-        private HashSet<Keys> previousKeys = new HashSet<Keys>(XnaKeysComparer.Instance);
+        private HashSet<Keys> previousKeys
+            = new HashSet<Keys>(XnaKeysComparer.Instance);
 
         public Keyboard(
             View view,
@@ -37,6 +44,7 @@ namespace NoesisGUI.MonoGameWrapper.Input.Devices
         {
             this.view = view;
             this.noesisKeyboard = noesisKeyboard;
+            this.isEnableDirectionalNavigation = config.IsEnableDirectionalNavigation;
             this.keyRepeatDelaySeconds = (float)config.InputKeyRepeatDelaySeconds;
             this.keyRepeatIntervalSeconds = (float)config.InputKeyRepeatIntervalSeconds;
         }
@@ -48,7 +56,6 @@ namespace NoesisGUI.MonoGameWrapper.Input.Devices
                 this.ConsumedKeys.Clear();
             }
 
-            var totalSecondsElapsed = (float)gameTime.ElapsedGameTime.TotalSeconds;
             var state = Microsoft.Xna.Framework.Input.Keyboard.GetState();
 
             if (this.currentKeys.Count > 0)
@@ -83,7 +90,7 @@ namespace NoesisGUI.MonoGameWrapper.Input.Devices
                         continue;
                     }
 
-                    var heldTime = this.heldKeysTime[key] + totalSecondsElapsed;
+                    var heldTime = this.heldKeysTime[key] + gameTime.ElapsedGameTime.TotalSeconds;
                     var keyAccumulatedRepeatsCount = (int)((heldTime - this.keyRepeatDelaySeconds)
                                                            / this.keyRepeatIntervalSeconds);
                     if (keyAccumulatedRepeatsCount > 0)
@@ -133,10 +140,50 @@ namespace NoesisGUI.MonoGameWrapper.Input.Devices
                    || key == Keys.RightAlt;
         }
 
+        private bool IsIgnored(Keys key)
+        {
+            var focused = this.noesisKeyboard.GetFocused();
+            if (focused == null
+                || focused is FrameworkElement frameworkElement
+                && !frameworkElement.IsLoaded)
+            {
+                // cannot pass key input if there is no focused loaded control
+                // WORKAROUND for the crash issue (when the control is no longer visible but still receives KeyDown)
+                // https://www.noesisengine.com/bugs/view.php?id=1270
+                return true;
+            }
+
+            if (this.isEnableDirectionalNavigation)
+            {
+                // directional (arrow) key navigation is enabled - don't ignore arrow key presses
+                return false;
+            }
+
+            // check if this is an arrow key
+            var isArrowKey = key == Keys.Up
+                             || key == Keys.Right
+                             || key == Keys.Down
+                             || key == Keys.Left;
+
+            if (!isArrowKey)
+            {
+                return false;
+            }
+
+            // it's arrow key - ignore in case a non-textbox is focused
+            var isIgnored = focused == null || !(focused is TextBox);
+            return isIgnored;
+        }
+
         private void OnXnaKeyDown(Keys key)
         {
             var noesisKey = KeyConverter.Convert(key);
             if (noesisKey == Key.None)
+            {
+                return;
+            }
+
+            if (this.IsIgnored(key))
             {
                 return;
             }
@@ -164,6 +211,11 @@ namespace NoesisGUI.MonoGameWrapper.Input.Devices
                 return;
             }
 
+            if (this.IsIgnored(key))
+            {
+                return;
+            }
+
             //System.Diagnostics.Debug.WriteLine("Noesis key up: " + noesisKey);
             this.view.KeyUp(noesisKey);
         }
@@ -180,17 +232,19 @@ namespace NoesisGUI.MonoGameWrapper.Input.Devices
             {
                 // consume!
                 this.ConsumedKeys.Add(key);
+                return;
             }
 
             if ((focused is ButtonBase
                  || focused is ComboBoxItem)
                 && (key == Keys.Enter
-                    || key == Keys.Space
+                    //|| key == Keys.Space
                     || key == Keys.Tab
-                    || key == Keys.Left
-                    || key == Keys.Up
-                    || key == Keys.Right
-                    || key == Keys.Down))
+                       //|| key == Keys.Left
+                       //|| key == Keys.Up
+                       //|| key == Keys.Right
+                       //|| key == Keys.Down))
+                   ))
             {
                 // consume!
                 this.ConsumedKeys.Add(key);

@@ -130,8 +130,7 @@
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static Key Convert(Keys key)
         {
-            Key noesisKey;
-            return noesisKeys.TryGetValue(key, out noesisKey) ? noesisKey : Key.None;
+            return noesisKeys.TryGetValue(key, out var noesisKey) ? noesisKey : Key.None;
         }
     }
 }

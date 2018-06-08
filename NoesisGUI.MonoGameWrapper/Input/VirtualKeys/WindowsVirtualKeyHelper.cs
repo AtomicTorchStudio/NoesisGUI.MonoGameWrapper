@@ -46,7 +46,8 @@
             uint wVirtKey,
             uint wScanCode,
             byte[] lpKeyState,
-            [Out] [MarshalAs(UnmanagedType.LPWStr)] StringBuilder pwszBuff,
+            [Out] [MarshalAs(UnmanagedType.LPWStr)]
+            StringBuilder pwszBuff,
             int cchBuff,
             uint wFlags,
             IntPtr dwhkl);

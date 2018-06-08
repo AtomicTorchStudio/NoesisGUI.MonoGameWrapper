@@ -13,17 +13,32 @@
 
         private readonly Mouse mouse;
 
+        private readonly NoesisViewWrapper noesisViewWrapper;
+
         internal InputManager(
-            View view,
-            UIElement uiRendererRoot,
+            NoesisViewWrapper noesisViewWrapper,
             NoesisConfig config)
         {
+            this.noesisViewWrapper = noesisViewWrapper;
+            var view = noesisViewWrapper.GetView();
+            var controlTreeRoot = view.Content;
+
             this.keyboard = new Keyboard(
                 view,
-                uiRendererRoot.Keyboard,
+                controlTreeRoot.Keyboard,
                 config);
 
-            this.mouse = new Mouse(view, uiRendererRoot, config);
+            // Find control tree root.
+            // It's super important to use global UI root to process visual tree hit testing:
+            // controlTreeRoot root is not the UI root and popup visuals are created in the UI root.
+            var rootVisual = (Visual)controlTreeRoot;
+            while (VisualTreeHelper.GetParent(rootVisual) is var parent
+                   && parent != null)
+            {
+                rootVisual = parent;
+            }
+
+            this.mouse = new Mouse(view, rootVisual, controlTreeRoot, config);
         }
 
         /// <summary>
@@ -46,6 +61,8 @@
 
         internal void Update(GameTime gameTime, bool isWindowActive)
         {
+            gameTime = this.noesisViewWrapper.CalculateRelativeGameTime(gameTime);
+
             this.keyboard.UpdateKeyboard(gameTime, isWindowActive);
             this.mouse.UpdateMouse(gameTime, isWindowActive);
         }
