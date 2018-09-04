@@ -150,8 +150,8 @@ namespace NoesisGUI.MonoGameWrapper
 
         private bool DefaultCheckIfElementIgnoresHitTest(Visual visual)
         {
-            if (visual is UIElement uiElement
-                && !uiElement.IsHitTestVisible)
+            if (visual is Control control
+                && !control.IsHitTestVisible)
             {
                 // ignores hit test
                 return true;

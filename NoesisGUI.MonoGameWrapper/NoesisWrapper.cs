@@ -8,8 +8,6 @@
     using NoesisGUI.MonoGameWrapper.Input;
     using NoesisGUI.MonoGameWrapper.Providers;
 
-    using EventArgs = Noesis.EventArgs;
-
     /// <summary>
     /// Wrapper usage:
     /// 1. at game LoadContent() create wrapper instance
@@ -34,6 +32,8 @@
         private readonly GraphicsDevice graphicsDevice;
 
         private InputManager inputManager;
+
+        private Sizei lastSize;
 
         private NoesisProviderManager providerManager;
 
@@ -88,7 +88,7 @@
                 controlTreeRoot,
                 this.graphicsDevice,
                 this.config.CurrentTotalGameTime);
-            this.UpdateSize();
+            this.RefreshSize();
 
             this.inputManager = this.view.CreateInputManager(config);
 
@@ -134,6 +134,7 @@
         /// <param name="gameTime">Current game time.</param>
         public void Update(GameTime gameTime)
         {
+            this.RefreshSize();
             this.view.Update(gameTime);
         }
 
@@ -171,29 +172,27 @@
             Debug.Assert(viewWeakRef.Target == null);
         }
 
-        private void DeviceLostHandler(object sender, System.EventArgs args)
+        private void DeviceLostHandler(object sender, System.EventArgs eventArgs)
         {
             // TODO: restore this? not sure where it went in NoesisGUI 2.0
             //Noesis.GUI.DeviceLost();
         }
 
-        private void DeviceResetHandler(object sender, System.EventArgs eventArgs)
+        private void DeviceResetHandler(object sender, System.EventArgs e)
         {
             // TODO: restore this? not sure where it went in NoesisGUI 2.0
             //Noesis.GUI.DeviceReset();
-            this.UpdateSize();
+            this.RefreshSize();
         }
 
         private void EventsSubscribe()
         {
-            this.gameWindow.ClientSizeChanged += this.WindowClientSizeChangedHandler;
             this.graphicsDevice.DeviceReset += this.DeviceResetHandler;
             this.graphicsDevice.DeviceLost += this.DeviceLostHandler;
         }
 
         private void EventsUnsubscribe()
         {
-            this.gameWindow.ClientSizeChanged -= this.WindowClientSizeChangedHandler;
             this.graphicsDevice.DeviceReset -= this.DeviceResetHandler;
             this.graphicsDevice.DeviceLost -= this.DeviceLostHandler;
         }
@@ -208,6 +207,19 @@
             }
         }
 
+        private void RefreshSize()
+        {
+            var viewport = this.graphicsDevice.Viewport;
+            var size = new Sizei((uint)viewport.Width, (uint)viewport.Height);
+            if (this.lastSize == size)
+            {
+                return;
+            }
+
+            this.lastSize = size;
+            this.view.SetSize((ushort)viewport.Width, (ushort)viewport.Height);
+        }
+
         private void Shutdown()
         {
             this.DestroyRoot();
@@ -215,17 +227,6 @@
             this.providerManager.Dispose();
             this.providerManager = null;
             GUI.UnregisterNativeTypes();
-        }
-
-        private void UpdateSize()
-        {
-            var viewport = this.graphicsDevice.Viewport;
-            this.view.SetSize((ushort)viewport.Width, (ushort)viewport.Height);
-        }
-
-        private void WindowClientSizeChangedHandler(object sender, System.EventArgs eventArgs)
-        {
-            this.UpdateSize();
         }
     }
 }

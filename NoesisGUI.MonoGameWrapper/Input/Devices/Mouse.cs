@@ -21,6 +21,8 @@
 
         private readonly TimeSpan doubleClickInterval;
 
+        private readonly bool isProcessMiddleButton;
+
         /// <summary>
         /// Used for double click handling
         /// </summary>
@@ -34,8 +36,6 @@
         private bool isAnyControlUnderMouseCursor;
 
         private bool isLastFrameWasScrolled;
-
-        private readonly bool isProcessMiddleButton;
 
         private int lastScrollWheelValue;
 
@@ -66,7 +66,6 @@
 
         public void UpdateMouse(GameTime gameTime, bool isWindowActive)
         {
-            // refresh
             this.isAnyControlUnderMouseCursor = this.CheckIsAnyControlUnderMouseCursor();
 
             this.totalGameTime = gameTime.TotalGameTime;
@@ -136,14 +135,14 @@
                 this.ConsumedDeltaWheel = 0;
             }
 
-            this.ProcessMouseButtonDown(MouseButton.Left, state.LeftButton, previousState.LeftButton);
+            this.ProcessMouseButtonDown(MouseButton.Left,  state.LeftButton,  previousState.LeftButton);
             this.ProcessMouseButtonDown(MouseButton.Right, state.RightButton, previousState.RightButton);
             if (this.isProcessMiddleButton)
             {
                 this.ProcessMouseButtonDown(MouseButton.Middle, state.MiddleButton, previousState.MiddleButton);
             }
 
-            this.ProcessMouseButtonUp(MouseButton.Left, state.LeftButton, previousState.LeftButton);
+            this.ProcessMouseButtonUp(MouseButton.Left,  state.LeftButton,  previousState.LeftButton);
             this.ProcessMouseButtonUp(MouseButton.Right, state.RightButton, previousState.RightButton);
             if (this.isProcessMiddleButton)
             {

@@ -15,10 +15,21 @@
     #endregion
 
     /// <summary>
-    /// This is an example MonoGame game using NoesisGUI
+    /// This is an example MonoGame game using NoesisGUI.
     /// </summary>
     public class GameWithNoesis : Game
     {
+        #region Constants
+
+        // You can try enabling the fullscreen mode here.
+        private const bool SettingIsFullscreen = true;
+
+        // If you want to try the hardware fullscreen mode, you can enable it here.
+        // Please note that it has some issues in MonoGame 3.6 and not recommended.
+        private const bool SettingIsFullscreenEnforceHardwareMode = false;
+
+        #endregion
+
         #region Fields
 
         readonly GraphicsDeviceManager graphics;
@@ -75,9 +86,29 @@
         {
             this.IsMouseVisible = true;
 
-            // TODO: Add your initialization logic here
-
             this.Window.AllowUserResizing = true;
+
+            if (SettingIsFullscreen || SettingIsFullscreenEnforceHardwareMode)
+            {
+                // let's setup the fullscreen mode
+                if (SettingIsFullscreenEnforceHardwareMode)
+                {
+                    this.graphics.HardwareModeSwitch = true;
+                    this.graphics.PreferredBackBufferWidth = this.GraphicsDevice.DisplayMode.Width;
+                    this.graphics.PreferredBackBufferHeight = this.GraphicsDevice.DisplayMode.Height;
+                }
+                else
+                {
+                    this.graphics.HardwareModeSwitch = false;
+                }
+
+                this.graphics.IsFullScreen = true;
+                this.graphics.ApplyChanges();
+            }
+
+            RefreshBackbufferSize();
+
+            // TODO: Add your initialization logic here
 
             base.Initialize();
         }
@@ -119,17 +150,20 @@
                 || Keyboard.GetState().IsKeyDown(Keys.Escape))
             {
                 Exit();
+                return;
             }
+
+            RefreshBackbufferSize();
 
             // update NoesisGUI input only (clicks, key presses, mouse position, etc)
             this.noesisWrapper.UpdateInput(gameTime, isWindowActive: this.IsActive);
 
             // TODO: Add your game logic update code here
-                                                                        
-            base.Update(gameTime);            
-            
+
+            base.Update(gameTime);
+
             // update NoesisGUI after updating game logic (it will perform layout and other operations)
-            this.noesisWrapper.Update(gameTime);                      
+            this.noesisWrapper.Update(gameTime);
         }
 
         private void CreateNoesisGUI()
@@ -165,6 +199,29 @@
 
             this.noesisWrapper.Dispose();
             this.noesisWrapper = null;
+        }
+
+        // There is a bug in MonoGame 3.6 - the game doesn't automatically adjust its backbuffer size to match the game window client bounds.
+        // So we have to manually refresh the backbuffer size every frame.
+        private void RefreshBackbufferSize()
+        {
+            if (this.graphics.HardwareModeSwitch
+                && this.graphics.IsFullScreen)
+            {
+                // don't refresh the backbuffer size automatically in fullscreen hardware mode
+                return;
+            }
+
+            var bounds = this.Window.ClientBounds;
+            if (this.graphics.PreferredBackBufferWidth == bounds.Width
+                && this.graphics.PreferredBackBufferHeight == bounds.Height)
+            {
+                return;
+            }
+
+            this.graphics.PreferredBackBufferWidth = bounds.Width;
+            this.graphics.PreferredBackBufferHeight = bounds.Height;
+            this.graphics.ApplyChanges();
         }
 
         #endregion
