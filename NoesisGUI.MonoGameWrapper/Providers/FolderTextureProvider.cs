@@ -18,7 +18,7 @@
     public class FolderTextureProvider : TextureProvider, IDisposable
     {
         private readonly Dictionary<string, WeakReference<Texture2D>> cache
-            = new Dictionary<string, WeakReference<Texture2D>>(StringComparer.OrdinalIgnoreCase);
+            = new(StringComparer.OrdinalIgnoreCase);
 
         private readonly GraphicsDevice graphicsDevice;
 

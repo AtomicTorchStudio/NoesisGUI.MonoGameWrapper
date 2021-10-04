@@ -5,19 +5,13 @@
     using Microsoft.Xna.Framework;
     using Microsoft.Xna.Framework.Input;
     using Noesis;
-    using MouseState = Microsoft.Xna.Framework.Input.MouseState;
     using Point = Noesis.Point;
 
     internal class Mouse
     {
         public readonly ICollection<MouseButton> ConsumedButtons = new List<MouseButton>();
 
-        /// <summary>
-        /// Used for excluding consuming of input events by primary LayoutRoot
-        /// </summary>
-        private readonly HitTestIgnoreDelegate checkIfElementIgnoresHitTest;
-
-        private readonly FrameworkElement controlTreeRoot;
+        private readonly NoesisConfig config;
 
         private readonly TimeSpan doubleClickInterval;
 
@@ -27,15 +21,15 @@
         /// Used for double click handling
         /// </summary>
         private readonly Dictionary<MouseButton, TimeSpan> lastPressTimeDictionary =
-            new Dictionary<MouseButton, TimeSpan>();
+            new();
 
         private readonly Visual rootVisual;
+
+        private readonly Noesis.Keyboard noesisKeyboard;
 
         private readonly View view;
 
         private bool isAnyControlUnderMouseCursor;
-
-        private bool isLastFrameWasScrolled;
 
         private int lastScrollWheelValue;
 
@@ -50,14 +44,14 @@
         public Mouse(
             View view,
             Visual rootVisual,
-            FrameworkElement controlTreeRoot,
+            Noesis.Keyboard noesisKeyboard,
             NoesisConfig config)
         {
             this.view = view;
             this.rootVisual = rootVisual;
-            this.controlTreeRoot = controlTreeRoot;
+            this.noesisKeyboard = noesisKeyboard;
+            this.config = config;
 
-            this.checkIfElementIgnoresHitTest = config.CheckIfElementIgnoresHitTest;
             this.doubleClickInterval = TimeSpan.FromSeconds(config.InputMouseDoubleClickIntervalSeconds);
             this.isProcessMiddleButton = config.IsProcessMouseMiddleButton;
         }
@@ -100,16 +94,18 @@
 
             var x = state.X;
             var y = state.Y;
+            var viewport = this.config.CallbackGetViewport();
+            x -= viewport.X;
+            y -= viewport.Y;
+
             var scrollWheelValue = state.ScrollWheelValue;
 
             if (this.lastX != x
-                || this.lastY != y
-                || this.isLastFrameWasScrolled)
+                || this.lastY != y)
             {
                 this.view.MouseMove(x, y);
                 this.lastX = x;
                 this.lastY = y;
-                this.isLastFrameWasScrolled = false;
             }
 
             if (this.lastScrollWheelValue != scrollWheelValue)
@@ -117,11 +113,11 @@
                 if (this.isAnyControlUnderMouseCursor)
                 {
                     var scrollDeltaValue = scrollWheelValue - this.lastScrollWheelValue;
+                    // apply workaround to disable horizontal scroll https://www.noesisengine.com/bugs/view.php?id=1457
+                    this.view.KeyUp(Key.LeftShift);
+                    this.view.KeyUp(Key.RightShift);
                     this.view.MouseWheel(x, y, scrollDeltaValue);
                     this.ConsumedDeltaWheel = scrollDeltaValue;
-                    // on the next frame it's required to update NoesisGUI mouse position
-                    // (on the current frame it's doesn't give required affect)
-                    this.isLastFrameWasScrolled = true;
                 }
                 else
                 {
@@ -154,39 +150,28 @@
 
         private bool CheckIsAnyControlUnderMouseCursor()
         {
-            using (var hitTestResult = VisualTreeHelper.HitTest(
+            DependencyObject hit = null;
+            VisualTreeHelper.HitTest(
                 this.rootVisual,
-                new Point(this.lastX, this.lastY)))
-            {
-                var visual = hitTestResult.VisualHit as FrameworkElement;
-                // ensure that there is no IsHitTestVisible==False parent controls
-                while (visual != null)
-                {
-                    if (visual == this.controlTreeRoot)
-                    {
-                        // hit test is not ignored (we're at root)
-                        return true;
-                    }
+                filterCallback: hitCandidate =>
+                                {
+                                    if (hitCandidate is UIElement uiElement
+                                        && (!uiElement.IsHitTestVisible
+                                            || !uiElement.IsVisible))
+                                    {
+                                        return HitTestFilterBehavior.ContinueSkipSelfAndChildren;
+                                    }
 
-                    if (this.checkIfElementIgnoresHitTest(visual))
-                    {
-                        // hit test ignored
-                        return false;
-                    }
+                                    return HitTestFilterBehavior.Continue;
+                                },
+                resultCallback: result =>
+                                {
+                                    hit = result.VisualHit;
+                                    return HitTestResultBehavior.Stop;
+                                },
+                hitTestParameters: new PointHitTestParameters(new Point(this.lastX, this.lastY)));
 
-                    if (visual is Popup
-                        || visual is ContextMenu)
-                    {
-                        // hit test is not ignored (we're at Popup/ContextMenu root)
-                        return true;
-                    }
-
-                    // travel up - maybe the parent control should capture focus
-                    visual = visual.Parent ?? VisualTreeHelper.GetParent(visual) as FrameworkElement;
-                }
-
-                return false;
-            }
+            return hit is not null;
         }
 
         private void ProcessMouseButtonDown(
@@ -206,6 +191,7 @@
                 return;
             }
 
+            var isDoubleClick = false;
             if (buttonId == MouseButton.Left)
             {
                 // check double click (NoesisGUI crashes if we check for double click for a mouse button other than the left one)
@@ -214,11 +200,15 @@
                 {
                     //System.Diagnostics.Debug.WriteLine("Mouse double click: " + buttonId);
                     this.view.MouseDoubleClick(this.lastX, this.lastY, buttonId);
+                    isDoubleClick = true;
                 }
             }
 
             //System.Diagnostics.Debug.WriteLine("Mouse button down: " + buttonId);
-            this.view.MouseButtonDown(this.lastX, this.lastY, buttonId);
+            if (!isDoubleClick)
+            {
+                this.view.MouseButtonDown(this.lastX, this.lastY, buttonId);
+            }
 
             if (buttonId == MouseButton.Left)
             {
@@ -246,6 +236,13 @@
 
             //System.Diagnostics.Debug.WriteLine("Mouse button up: " + buttonId);
             this.view.MouseButtonUp(this.lastX, this.lastY, buttonId);
+
+            if (!this.isAnyControlUnderMouseCursor
+                && this.noesisKeyboard.FocusedElement is TextBoxBase)
+            {
+                // ensure the focus is released
+                this.noesisKeyboard.Focus(null);
+            }
         }
 
         private void TryConsumeMouseButton(MouseButton buttonId)

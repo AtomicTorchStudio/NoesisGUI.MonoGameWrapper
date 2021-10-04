@@ -19,16 +19,11 @@ namespace NoesisGUI.MonoGameWrapper
         /// (can be null) Local XAML file path - will be used as global ResourceDictionary (UI
         /// style).
         /// </param>
-        /// <param name="checkIfElementIgnoresHitTest">
-        /// Callback to invoke when element is tested for hit test (if callback returns true hit is ignored).
-        /// It has default implementation so you can skip this.
-        /// </param>
-        /// <param name="onErrorMessageReceived">Callback to invoke when error message received from NoesisGUI.</param>
-        /// <param name="onExceptionThrown">
-        /// Callback to invoke when exception thrown from NoesisGUI context (can be in event
-        /// handler, etc).
-        /// </param>
         /// <param name="currentTotalGameTime">Current game time (needed to do proper Update() calls).</param>
+        /// <param name="onErrorMessageReceived">Callback to invoke when error message received from NoesisGUI.</param>
+        /// <param name="onUnhandledException">
+        /// Callback to invoke when an unhandled exception thrown from NoesisGUI context (can be in event handler, etc).
+        /// </param>
         /// <param name="isEnableDirectionalNavigation">
         /// Is directional (arrow) keys navigation should be enabled? If it's disabled (by default)
         /// arrow key presses will be not passed to NoesisGUI unless it's focused on a textbox.
@@ -44,9 +39,10 @@ namespace NoesisGUI.MonoGameWrapper
             string rootXamlFilePath,
             string themeXamlFilePath,
             TimeSpan currentTotalGameTime,
-            HitTestIgnoreDelegate checkIfElementIgnoresHitTest = null,
+            Func<Viewport> callbackGetViewport,
             Action<string> onErrorMessageReceived = null,
-            Action<Exception> onExceptionThrown = null,
+            Action<string> onDevLogMessageReceived = null,
+            Action<Exception> onUnhandledException = null,
             bool isEnableDirectionalNavigation = false,
             bool isProcessMouseMiddleButton = false)
         {
@@ -63,20 +59,19 @@ namespace NoesisGUI.MonoGameWrapper
             this.RootXamlFilePath = rootXamlFilePath.Replace('/', '\\');
             this.ThemeXamlFilePath = themeXamlFilePath?.Replace('/', '\\');
 
-            this.CheckIfElementIgnoresHitTest = checkIfElementIgnoresHitTest
-                                                ?? this.DefaultCheckIfElementIgnoresHitTest;
-
             this.OnErrorMessageReceived = onErrorMessageReceived;
-            this.OnExceptionThrown = onExceptionThrown;
+            this.OnDevLogMessageReceived = onDevLogMessageReceived;
+            this.OnUnhandledException = onUnhandledException;
             this.CurrentTotalGameTime = currentTotalGameTime;
+            this.CallbackGetViewport = callbackGetViewport;
             this.IsProcessMouseMiddleButton = isProcessMouseMiddleButton;
             this.NoesisProviderManager = noesisProviderManager;
             this.IsEnableDirectionalNavigation = isEnableDirectionalNavigation;
         }
 
-        public bool IsEnableDirectionalNavigation { get; }
+        public Func<Viewport> CallbackGetViewport { get; }
 
-        internal HitTestIgnoreDelegate CheckIfElementIgnoresHitTest { get; }
+        public bool IsEnableDirectionalNavigation { get; }
 
         internal TimeSpan CurrentTotalGameTime { get; }
 
@@ -94,9 +89,11 @@ namespace NoesisGUI.MonoGameWrapper
 
         internal NoesisProviderManager NoesisProviderManager { get; }
 
+        internal Action<string> OnDevLogMessageReceived { get; }
+
         internal Action<string> OnErrorMessageReceived { get; }
 
-        internal Action<Exception> OnExceptionThrown { get; }
+        internal Action<Exception> OnUnhandledException { get; }
 
         internal string RootXamlFilePath { get; }
 
@@ -146,18 +143,6 @@ namespace NoesisGUI.MonoGameWrapper
             {
                 throw new Exception("NoesisGUI requires GraphicsProfile.HiDef set to MonoGame Graphics Device");
             }
-        }
-
-        private bool DefaultCheckIfElementIgnoresHitTest(Visual visual)
-        {
-            if (visual is Control control
-                && !control.IsHitTestVisible)
-            {
-                // ignores hit test
-                return true;
-            }
-
-            return false;
         }
     }
 }

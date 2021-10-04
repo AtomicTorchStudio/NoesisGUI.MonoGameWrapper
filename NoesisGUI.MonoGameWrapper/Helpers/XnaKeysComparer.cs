@@ -5,7 +5,7 @@ namespace NoesisGUI.MonoGameWrapper.Helpers
 
     internal class XnaKeysComparer : IEqualityComparer<Keys>
     {
-        public static readonly XnaKeysComparer Instance = new XnaKeysComparer();
+        public static readonly XnaKeysComparer Instance = new();
 
         private XnaKeysComparer()
         {

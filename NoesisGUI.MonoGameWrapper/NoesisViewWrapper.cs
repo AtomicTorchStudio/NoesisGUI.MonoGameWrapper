@@ -1,32 +1,40 @@
 ﻿namespace NoesisGUI.MonoGameWrapper
 {
     using System;
+    using System.Windows.Forms;
     using Microsoft.Xna.Framework;
     using Microsoft.Xna.Framework.Graphics;
     using Noesis;
     using NoesisGUI.MonoGameWrapper.Helpers.DeviceState;
     using NoesisGUI.MonoGameWrapper.Input;
     using SharpDX.Direct3D11;
+    using View = Noesis.View;
 
     public class NoesisViewWrapper
     {
+        private readonly Device deviceD3D11;
+
         private readonly DeviceStateHelper deviceState;
 
         private readonly GraphicsDevice graphicsDevice;
 
-        private readonly Renderer renderer;
+        private readonly FrameworkElement rootElement;
 
         private readonly TimeSpan startupTotalGameTime;
+
+        private uint antiAlliasingOffscreenSampleCount;
 
         private bool isPPAAEnabled;
 
         private TimeSpan lastUpdateTotalGameTime;
 
-        private View.TessellationQuality quality = View.TessellationQuality.High;
+        private TessellationMaxPixelError quality = TessellationMaxPixelError.HighQuality;
 
-        private View.RenderFlags renderFlags;
+        private RenderDeviceD3D11 renderDeviceD3D11;
 
-        private Sizei size;
+        private Renderer renderer;
+
+        private RenderFlags renderFlags;
 
         private View view;
 
@@ -41,19 +49,29 @@
             GraphicsDevice graphicsDevice,
             TimeSpan currentTotalGameTime)
         {
+            this.rootElement = rootElement;
             this.graphicsDevice = graphicsDevice;
-            var deviceD3D11 = (Device)this.graphicsDevice.Handle;
-
-            this.deviceState = new DeviceStateHelperD3D11(deviceD3D11);
-
-            this.view = this.CreateView(rootElement, deviceD3D11);
-            this.renderer = this.view.Renderer;
-
-            this.ApplyQualitySetting();
-            this.ApplyAntiAliasingSetting();
-            this.ApplyRenderingFlagsSetting();
-
+            this.deviceD3D11 = (Device)this.graphicsDevice.Handle;
+            this.deviceState = new DeviceStateHelperD3D11(this.deviceD3D11);
             this.startupTotalGameTime = this.lastUpdateTotalGameTime = currentTotalGameTime;
+
+            this.CreateView();
+        }
+
+        public uint AntiAlliasingOffscreenSampleCount
+        {
+            get => this.antiAlliasingOffscreenSampleCount;
+            set
+            {
+                if (this.antiAlliasingOffscreenSampleCount == value)
+                {
+                    return;
+                }
+
+                this.antiAlliasingOffscreenSampleCount = value;
+                // TODO: waiting for a fix https://www.noesisengine.com/bugs/view.php?id=1686
+                // then we can use a new method to apply the change
+            }
         }
 
         /// <summary>
@@ -77,12 +95,12 @@
         /// <summary>
         /// Gets or sets the tesselation quality.
         /// </summary>
-        public View.TessellationQuality Quality
+        public TessellationMaxPixelError Quality
         {
             get => this.quality;
             set
             {
-                if (this.quality == value)
+                if (this.quality.Equals(value))
                 {
                     return;
                 }
@@ -95,7 +113,7 @@
         /// <summary>
         /// Gets or sets the render flags.
         /// </summary>
-        public View.RenderFlags RenderFlags
+        public RenderFlags RenderFlags
         {
             get => this.renderFlags;
             set
@@ -110,31 +128,35 @@
             }
         }
 
+        /// <summary>
+        /// Please note - it could change if the view is recreated.
+        /// </summary>
+        public View View => this.view;
+
         public void ApplyAntiAliasingSetting()
         {
-            this.view?.SetIsPPAAEnabled(this.IsPPAAEnabled);
-        }
-
-        public InputManager CreateInputManager(NoesisConfig config)
-        {
-            return new InputManager(this, config);
-        }
-
-        public View GetView()
-        {
-            return this.view;
-        }
-
-        public void PreRender()
-        {
-            this.renderer.UpdateRenderTree();
-            if (!this.renderer.NeedsOffscreen())
+            var content = this.view?.Content;
+            if (content is null)
             {
                 return;
             }
 
+            content.PPAAMode = this.IsPPAAEnabled
+                                   ? PPAAMode.Default
+                                   : PPAAMode.Disabled;
+            this.ApplyRenderingFlagsSetting();
+        }
+
+        public InputManager CreateInputManager(NoesisConfig config, Form form)
+        {
+            return new(this, config, form);
+        }
+
+        public void PreRender()
+        {
             using (this.deviceState.Remember())
             {
+                // TODO: consider not restoring device state if result was off (however we need to dispose temporary DX objects)
                 this.renderer.RenderOffscreen();
             }
         }
@@ -149,19 +171,15 @@
 
         public void SetSize(ushort width, ushort height)
         {
-            this.size = new Sizei(width, height);
             this.view.SetSize(width, height);
             this.view.Update(this.lastUpdateTotalGameTime.TotalSeconds);
+            // required in NoesisGUI 3.0, even if we don't render anything
+            this.renderer.UpdateRenderTree();
         }
 
         public void Shutdown()
         {
-            using (this.deviceState.Remember())
-            {
-                this.renderer.Shutdown();
-            }
-
-            this.view = null;
+            this.DestroyViewAndRenderer();
         }
 
         public void Update(GameTime gameTime)
@@ -170,6 +188,8 @@
 
             gameTime = this.CalculateRelativeGameTime(gameTime);
             this.view.Update(gameTime.TotalGameTime.TotalSeconds);
+            // required in NoesisGUI 3.0, even if we don't render anything
+            this.renderer.UpdateRenderTree();
         }
 
         /// <summary>
@@ -179,33 +199,62 @@
         /// <returns>Time since startup of this wrapper object.</returns>
         internal GameTime CalculateRelativeGameTime(GameTime gameTime)
         {
-            return new GameTime(gameTime.TotalGameTime - this.startupTotalGameTime,
-                                gameTime.ElapsedGameTime);
+            return new(gameTime.TotalGameTime - this.startupTotalGameTime,
+                       gameTime.ElapsedGameTime);
         }
 
         private void ApplyQualitySetting()
         {
-            this.view?.SetTessellationQuality(this.quality);
+            this.view?.SetTessellationMaxPixelError(this.quality);
         }
 
         private void ApplyRenderingFlagsSetting()
         {
-            if (this.renderFlags != 0)
+            var flags = this.renderFlags;
+            flags |= RenderFlags.LCD;
+
+            if (this.isPPAAEnabled)
             {
-                this.view?.SetFlags(this.renderFlags);
+                flags |= RenderFlags.PPAA;
+            }
+
+            this.view?.SetFlags(flags);
+        }
+
+        private void CreateView()
+        {
+            if (this.view is not null)
+            {
+                return;
+            }
+
+            using (this.deviceState.Remember())
+            {
+                this.view = GUI.CreateView(this.rootElement);
+                this.renderDeviceD3D11 = new RenderDeviceD3D11(this.deviceD3D11.ImmediateContext.NativePointer,
+                                                               sRGB: false);
+
+                // TODO: increased to deal with the glyph cache crash - refactor to move to NoesisConfig
+                this.renderDeviceD3D11.GlyphCacheWidth = this.renderDeviceD3D11.GlyphCacheHeight = 2048;
+                this.renderDeviceD3D11.OffscreenSampleCount = this.antiAlliasingOffscreenSampleCount;
+                this.renderer = this.view.Renderer;
+                this.renderer.Init(this.renderDeviceD3D11);
+
+                this.ApplyQualitySetting();
+                this.ApplyAntiAliasingSetting();
+                this.ApplyRenderingFlagsSetting();
             }
         }
 
-        private View CreateView(FrameworkElement rootElement, Device deviceD3D11)
+        private void DestroyViewAndRenderer()
         {
             using (this.deviceState.Remember())
             {
-                var view = GUI.CreateView(rootElement);
-                var renderDeviceD3D11 = new RenderDeviceD3D11(deviceD3D11.ImmediateContext.NativePointer,
-                                                              sRGB: false);
-                view.Renderer.Init(renderDeviceD3D11);
-                return view;
+                this.renderer.Shutdown();
             }
+
+            this.view = null;
+            this.renderer = null;
         }
     }
 }
