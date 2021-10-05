@@ -227,7 +227,7 @@ namespace Gallery
 
         float GetScale()
         {
-            return Display.Scale;
+            return Display?.Scale ?? 1.0f;
         }
 #else
         float GetScale()

@@ -4,8 +4,6 @@ This library provides solution for integration [NoesisGUI 3.0.12](http://noesise
 Currently it supports only MonoGame projects for Windows DirectX 11.
 Example MonoGame project with integrated NoesisGUI is included.
 
-Please note: the example project is currently broken (WIP).
-
 Prerequisites
 -----
 * [Visual Studio 2019](https://www.visualstudio.com/), any edition (JetBrains Rider works fine too)

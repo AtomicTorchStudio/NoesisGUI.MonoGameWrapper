@@ -5,11 +5,9 @@
                     xmlns:noesis="clr-namespace:NoesisGUIExtensions;assembly=Noesis.GUI.Extensions"
                     xmlns:local="clr-namespace:Gallery">
 
-  <ResourceDictionary>
-    <ResourceDictionary.MergedDictionaries>
-      <ResourceDictionary Source="Theme/NoesisTheme.DarkBlue.xaml" />
-    </ResourceDictionary.MergedDictionaries>
-  </ResourceDictionary>
+  <ResourceDictionary.MergedDictionaries>
+    <ResourceDictionary Source="Theme/NoesisTheme.DarkBlue.xaml" />
+  </ResourceDictionary.MergedDictionaries>
   
   <FontFamily x:Key="IconFont">Samples/Fonts/#WidgetIcons</FontFamily>
 

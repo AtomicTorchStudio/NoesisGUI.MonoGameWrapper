@@ -176,6 +176,9 @@
 
         private void CreateNoesisGUI()
         {
+            // ensure the Noesis.App assembly is loaded otherwise NoesisGUI will be unable to located "Window" type
+            System.Reflection.Assembly.Load("Noesis.App");
+            
             // TODO: input your license details here
             var licenseName = "My license";
             var licenseKey = "ABCDEFGH";
