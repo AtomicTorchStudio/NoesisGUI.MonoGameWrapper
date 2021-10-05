@@ -41,8 +41,9 @@
             var fontFilePaths = Directory.GetFiles(folderPath, "*.*", searchOption: SearchOption.TopDirectoryOnly);
             foreach (var fontPath in fontFilePaths)
             {
-                if (fontPath.EndsWith(".ttf", StringComparison.OrdinalIgnoreCase)
-                    || fontPath.EndsWith(".otf", StringComparison.OrdinalIgnoreCase))
+                if (fontPath.EndsWith(".ttf",    StringComparison.OrdinalIgnoreCase)
+                    || fontPath.EndsWith(".otf", StringComparison.OrdinalIgnoreCase)
+                    || fontPath.EndsWith(".ttc", StringComparison.OrdinalIgnoreCase))
                 {
                     this.RegisterFont(folder, fontPath);
                 }

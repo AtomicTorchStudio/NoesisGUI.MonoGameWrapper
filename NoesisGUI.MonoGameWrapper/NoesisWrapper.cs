@@ -2,11 +2,15 @@
 {
     using System;
     using System.Diagnostics;
+    using System.Windows.Forms;
     using Microsoft.Xna.Framework;
     using Microsoft.Xna.Framework.Graphics;
     using Noesis;
     using NoesisGUI.MonoGameWrapper.Input;
     using NoesisGUI.MonoGameWrapper.Providers;
+    using Control = System.Windows.Forms.Control;
+    using EventArgs = System.EventArgs;
+    using Rectangle = Microsoft.Xna.Framework.Rectangle;
 
     /// <summary>
     /// Wrapper usage:
@@ -25,25 +29,25 @@
     /// </summary>
     public class NoesisWrapper : IDisposable
     {
+        private static bool isGuiInitialized;
+
         private readonly NoesisConfig config;
 
         private readonly GameWindow gameWindow;
 
         private readonly GraphicsDevice graphicsDevice;
 
-        private InputManager inputManager;
+        private InputManager input;
 
-        private Sizei lastSize;
+        //private bool lastIsWindowActive;
+
+        private Size lastSize;
+
+        private Rectangle lastViewportBounds;
 
         private NoesisProviderManager providerManager;
 
         private NoesisViewWrapper view;
-
-        static NoesisWrapper()
-        {
-            // init NoesisGUI (called only once during the game lifetime)
-            GUI.Init();
-        }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="NoesisWrapper" /> class.
@@ -55,26 +59,27 @@
             this.gameWindow = config.GameWindow;
 
             // setup Noesis Debug callbacks
-            Log.LogCallback = this.NoesisLogCallbackHandler;
+            Log.SetLogCallback(this.NoesisLogCallbackHandler);
+            Error.SetUnhandledCallback(this.NoesisUnhandledExceptionHandler);
+
+            GUI.SetSoftwareKeyboardCallback(this.SoftwareKeyboardCallbackHandler);
 
             this.graphicsDevice = config.Graphics.GraphicsDevice;
             this.providerManager = config.NoesisProviderManager;
-            var provider = this.providerManager.Provider;
+            var provider = this.providerManager;
             GUI.SetFontProvider(provider.FontProvider);
             GUI.SetTextureProvider(provider.TextureProvider);
             GUI.SetXamlProvider(provider.XamlProvider);
 
             // setup theme
-            if (config.ThemeXamlFilePath != null)
+            if (config.ThemeXamlFilePath is not null)
             {
-                var themeResourceDictionary = (ResourceDictionary)GUI.LoadXaml(config.ThemeXamlFilePath);
-                if (themeResourceDictionary == null)
-                {
-                    throw new Exception(
-                        $"Theme is not found or was not able to load by NoesisGUI: {config.ThemeXamlFilePath}");
-                }
-
+                // similar to GUI.LoadApplicationResources(config.ThemeXamlFilePath)
+                // but retain the ResourceDictionary to expose it as a Theme property
+                // (useful to get application resources)
+                var themeResourceDictionary = new ResourceDictionary();
                 GUI.SetApplicationResources(themeResourceDictionary);
+                GUI.LoadComponent(themeResourceDictionary, config.ThemeXamlFilePath);
                 this.Theme = themeResourceDictionary;
             }
 
@@ -88,9 +93,10 @@
                 controlTreeRoot,
                 this.graphicsDevice,
                 this.config.CurrentTotalGameTime);
-            this.RefreshSize();
+            this.RefreshSize(forceRefresh: true);
 
-            this.inputManager = this.view.CreateInputManager(config);
+            var form = (Form)Control.FromHandle(this.gameWindow.Handle);
+            this.input = this.view.CreateInputManager(config, form);
 
             // subscribe to MonoGame events
             this.EventsSubscribe();
@@ -104,7 +110,7 @@
         /// <summary>
         /// Gets the input manager.
         /// </summary>
-        public InputManager Input => this.inputManager;
+        public InputManager Input => this.input;
 
         /// <summary>
         /// Gets resource dictionary of theme.
@@ -112,6 +118,18 @@
         public ResourceDictionary Theme { get; private set; }
 
         public NoesisViewWrapper View => this.view;
+
+        public static void Init(string licenseName, string licenseKey)
+        {
+            if (isGuiInitialized)
+            {
+                return;
+            }
+
+            // init NoesisGUI (called only once during the game lifetime)
+            isGuiInitialized = true;
+            GUI.Init(licenseName, licenseKey);
+        }
 
         public void Dispose()
         {
@@ -145,7 +163,14 @@
         /// <param name="isWindowActive">Is game focused?</param>
         public void UpdateInput(GameTime gameTime, bool isWindowActive)
         {
-            this.inputManager.Update(gameTime, isWindowActive);
+            //if (this.lastIsWindowActive != isWindowActive)
+            //{
+            //    // workaround for the issue when after switching from a GPU-heavy application NoesisGUI renders incorrectly
+            //    this.lastIsWindowActive = isWindowActive;
+            //    this.RefreshSize(forceRefresh: true);
+            //}
+
+            this.input.Update(gameTime, isWindowActive);
         }
 
         private void DestroyRoot()
@@ -162,7 +187,8 @@
             this.view = null;
             var viewWeakRef = new WeakReference(this.view);
             this.view = null;
-            this.inputManager = null;
+            this.input?.Dispose();
+            this.input = null;
             this.ControlTreeRoot = null;
 
             GC.Collect();
@@ -172,48 +198,76 @@
             Debug.Assert(viewWeakRef.Target == null);
         }
 
-        private void DeviceLostHandler(object sender, System.EventArgs eventArgs)
+        private void DeviceLostHandler(object sender, EventArgs eventArgs)
         {
             // TODO: restore this? not sure where it went in NoesisGUI 2.0
             //Noesis.GUI.DeviceLost();
         }
 
-        private void DeviceResetHandler(object sender, System.EventArgs e)
+        private void DeviceResetHandler(object sender, EventArgs e)
         {
             // TODO: restore this? not sure where it went in NoesisGUI 2.0
             //Noesis.GUI.DeviceReset();
-            this.RefreshSize();
+            this.RefreshSize(forceRefresh: true);
         }
 
         private void EventsSubscribe()
         {
             this.graphicsDevice.DeviceReset += this.DeviceResetHandler;
             this.graphicsDevice.DeviceLost += this.DeviceLostHandler;
+            this.gameWindow.TextInput += this.GameWindowTextInputHandler;
         }
 
         private void EventsUnsubscribe()
         {
             this.graphicsDevice.DeviceReset -= this.DeviceResetHandler;
             this.graphicsDevice.DeviceLost -= this.DeviceLostHandler;
+            this.gameWindow.TextInput -= this.GameWindowTextInputHandler;
+        }
+
+        private void GameWindowTextInputHandler(object sender, TextInputEventArgs e)
+        {
+            this.input.OnMonoGameChar(e.Character, e.Key);
         }
 
         private void NoesisLogCallbackHandler(LogLevel level, string channel, string message)
         {
-            // NoesisGUI 2.1 doesn't have the exception callback anymore
-            //this.config.OnExceptionThrown?.Invoke(exception);
             if (level == LogLevel.Error)
             {
                 this.config.OnErrorMessageReceived?.Invoke(message);
             }
+            else if (level >= LogLevel.Warning)
+            {
+                this.config.OnDevLogMessageReceived?.Invoke(message);
+            }
         }
 
-        private void RefreshSize()
+        private void NoesisUnhandledExceptionHandler(Exception exception)
         {
-            var viewport = this.graphicsDevice.Viewport;
-            var size = new Sizei((uint)viewport.Width, (uint)viewport.Height);
-            if (this.lastSize == size)
+            this.config.OnUnhandledException?.Invoke(exception);
+        }
+
+        private void RefreshSize(bool forceRefresh = false)
+        {
+            var viewport = this.config.CallbackGetViewport();
+            if (viewport.Bounds != this.lastViewportBounds)
+            {
+                this.lastViewportBounds = viewport.Bounds;
+                forceRefresh = true;
+            }
+
+            var size = new Size(viewport.Width, viewport.Height);
+            if (!forceRefresh
+                && this.lastSize == size)
             {
                 return;
+            }
+
+            if (forceRefresh
+                && this.lastSize == size)
+            {
+                // force refresh size
+                this.view.SetSize(1601, 901);
             }
 
             this.lastSize = size;
@@ -227,6 +281,11 @@
             this.providerManager.Dispose();
             this.providerManager = null;
             GUI.UnregisterNativeTypes();
+        }
+
+        private void SoftwareKeyboardCallbackHandler(UIElement focused, bool open)
+        {
+            this.input?.SoftwareKeyboardCallbackHandler(focused, open);
         }
     }
 }

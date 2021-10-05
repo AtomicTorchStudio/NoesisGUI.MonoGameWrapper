@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.28010.2036
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NoesisGUI.MonoGameWrapper", "NoesisGUI.MonoGameWrapper.csproj", "{DFA2077C-7332-454E-9D5D-4023C65B9E34}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NoesisManagedNetStandard", "..\NoesisGUI-ManagedSDK\Src\Noesis\Core\NoesisManagedAtomicTorch.csproj", "{8BC71D9B-DB72-449C-8CB3-2E1F7C72AEDF}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{DFA2077C-7332-454E-9D5D-4023C65B9E34}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DFA2077C-7332-454E-9D5D-4023C65B9E34}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DFA2077C-7332-454E-9D5D-4023C65B9E34}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DFA2077C-7332-454E-9D5D-4023C65B9E34}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8BC71D9B-DB72-449C-8CB3-2E1F7C72AEDF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8BC71D9B-DB72-449C-8CB3-2E1F7C72AEDF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8BC71D9B-DB72-449C-8CB3-2E1F7C72AEDF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8BC71D9B-DB72-449C-8CB3-2E1F7C72AEDF}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {20ECCF12-0036-4E3A-A754-3DE30D1C0181}
+	EndGlobalSection
+EndGlobal

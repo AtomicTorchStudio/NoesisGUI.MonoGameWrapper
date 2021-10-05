@@ -1,27 +1,19 @@
 ﻿namespace NoesisGUI.MonoGameWrapper.Helpers
 {
-    #region
-
     using System;
     using System.Reflection;
-
-    using Microsoft.Xna.Framework.Graphics;
-
+    using SharpDX.Direct3D11;
     using Texture = Noesis.Texture;
-
-    #endregion
+    using Texture2D = Microsoft.Xna.Framework.Graphics.Texture2D;
 
     public static class NoesisTextureHelper
     {
-        #region Static Fields
-
-        // This is a hack to access native texture
-        private static readonly Lazy<FieldInfo> TextureFieldInfo = new Lazy<FieldInfo>(
-            () => typeof(Texture2D).GetField("_texture", BindingFlags.Instance | BindingFlags.NonPublic));
-
-        #endregion
-
-        #region Public Methods and Operators
+        // We need the native texture pointer for the SharpDX texture
+        // but this API is not available in MonoGame.Texture class.
+        // Here we're using reflection to access the internal method.
+        private static readonly MethodInfo GetTextureMethod
+            = typeof(Texture2D).GetMethod("GetTexture",
+                                          BindingFlags.NonPublic | BindingFlags.Instance);
 
         public static Texture CreateNoesisTexture(Texture2D texture)
         {
@@ -32,51 +24,26 @@
 
             if (texture.IsDisposed)
             {
+                return null;
+
                 throw new Exception("Cannot wrap the disposed texture: " + texture);
             }
 
-            var nativeTexture = (SharpDX.Direct3D11.Texture2D)TextureFieldInfo.Value.GetValue(texture);
+            var textureNativePointer = GetTextureNativePointer(texture);
 
             return Texture.WrapD3D11Texture(
                 texture,
-                nativeTexture.NativePointer,
+                textureNativePointer,
                 texture.Width,
                 texture.Height,
                 texture.LevelCount,
-                format: GetTextureFormat(texture),
                 isInverted: false);
         }
 
-        #endregion
-
-        #region Methods
-
-        private static Texture.Format GetTextureFormat(Texture2D texture)
+        private static IntPtr GetTextureNativePointer(Texture2D texture)
         {
-            switch (texture.Format)
-            {
-                case SurfaceFormat.Color:
-                case SurfaceFormat.Bgra32:
-                    // BGRA 8 bit per channel, 32 bit total
-                    return Texture.Format.BGRA8;
-
-                case SurfaceFormat.Dxt1:
-                    return Texture.Format.BC1;
-
-                case SurfaceFormat.Dxt3:
-                    return Texture.Format.BC2;
-
-                case SurfaceFormat.Dxt5:
-                    return Texture.Format.BC3;
-
-                case SurfaceFormat.Alpha8:
-                    // grayscale 8 bit
-                    return Texture.Format.R8;
-            }
-
-            throw new ArgumentOutOfRangeException("Unknown texture format: " + texture.Format);
+            var resource = (Resource)GetTextureMethod.Invoke(texture, Array.Empty<object>());
+            return resource.NativePointer;
         }
-
-        #endregion
     }
 }

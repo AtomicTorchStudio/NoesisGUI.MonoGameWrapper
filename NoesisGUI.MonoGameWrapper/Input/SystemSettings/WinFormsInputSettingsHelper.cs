@@ -4,7 +4,7 @@ namespace NoesisGUI.MonoGameWrapper.Input.SystemSettings
 
     internal class WinFormsInputSettingsHelper : InputSettingsHelper
     {
-        public static readonly WinFormsInputSettingsHelper Instance = new WinFormsInputSettingsHelper();
+        public static readonly WinFormsInputSettingsHelper Instance = new();
 
         public override void GetSystemInputSettings(
             out double keyRepeatDelaySeconds,
@@ -23,7 +23,7 @@ namespace NoesisGUI.MonoGameWrapper.Input.SystemSettings
             // and a second click for the OS to consider the mouse action a double-click.
             var sysMouseDoubleClickTime = SystemInformation.DoubleClickTime;
 
-            keyRepeatDelaySeconds = Map(sysKeyboardDelay, 0, 3, 0.25, 1);
+            keyRepeatDelaySeconds = Map(sysKeyboardDelay,     0, 3,  0.25,      1);
             keyRepeatIntervalSeconds = Map(sysKeyboardRepeat, 0, 31, 1.0 / 2.5, 1.0 / 30.0);
 
             mouseDoubleClickIntervalSeconds = sysMouseDoubleClickTime / 1000d;

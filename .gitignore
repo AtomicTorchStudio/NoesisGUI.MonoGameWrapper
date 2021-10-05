@@ -31,3 +31,5 @@ Icon7
 /Libs/Output
 */Libs/Output
 .vs/
+.idea/
+packages/
