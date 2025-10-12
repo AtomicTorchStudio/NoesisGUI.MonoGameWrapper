@@ -9,7 +9,7 @@
     using NoesisGUI.MonoGameWrapper.Input;
     using NoesisGUI.MonoGameWrapper.Providers;
     using Control = System.Windows.Forms.Control;
-    using EventArgs = System.EventArgs;
+    using EventArgs = Noesis.EventArgs;
     using Rectangle = Microsoft.Xna.Framework.Rectangle;
 
     /// <summary>
@@ -128,7 +128,8 @@
 
             // init NoesisGUI (called only once during the game lifetime)
             isGuiInitialized = true;
-            GUI.Init(licenseName, licenseKey);
+            GUI.SetLicense(licenseName, licenseKey);
+            GUI.Init();
         }
 
         public void Dispose()
@@ -198,13 +199,13 @@
             Debug.Assert(viewWeakRef.Target == null);
         }
 
-        private void DeviceLostHandler(object sender, EventArgs eventArgs)
+        private void DeviceLostHandler(object sender, System.EventArgs args)
         {
             // TODO: restore this? not sure where it went in NoesisGUI 2.0
             //Noesis.GUI.DeviceLost();
         }
 
-        private void DeviceResetHandler(object sender, EventArgs e)
+        private void DeviceResetHandler(object sender, System.EventArgs eventArgs)
         {
             // TODO: restore this? not sure where it went in NoesisGUI 2.0
             //Noesis.GUI.DeviceReset();
@@ -263,12 +264,13 @@
                 return;
             }
 
-            if (forceRefresh
+            // commented out - this workaround seems to be no longer useful
+            /*if (forceRefresh
                 && this.lastSize == size)
             {
                 // force refresh size
                 this.view.SetSize(1601, 901);
-            }
+            }*/
 
             this.lastSize = size;
             this.view.SetSize((ushort)viewport.Width, (ushort)viewport.Height);
@@ -276,11 +278,14 @@
 
         private void Shutdown()
         {
+            isGuiInitialized = false;
+
             this.DestroyRoot();
             this.Theme = null;
             this.providerManager.Dispose();
             this.providerManager = null;
-            GUI.UnregisterNativeTypes();
+
+            GUI.Shutdown(native: false /* passing 'false' to allow UI reloading */);
         }
 
         private void SoftwareKeyboardCallbackHandler(UIElement focused, bool open)

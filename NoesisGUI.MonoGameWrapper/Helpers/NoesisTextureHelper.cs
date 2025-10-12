@@ -2,6 +2,7 @@
 {
     using System;
     using System.Reflection;
+    using Noesis;
     using SharpDX.Direct3D11;
     using Texture = Noesis.Texture;
     using Texture2D = Microsoft.Xna.Framework.Graphics.Texture2D;
@@ -17,27 +18,22 @@
 
         public static Texture CreateNoesisTexture(Texture2D texture)
         {
-            if (texture == null)
+            if (texture is null
+                || texture.IsDisposed)
             {
                 return null;
-            }
-
-            if (texture.IsDisposed)
-            {
-                return null;
-
-                throw new Exception("Cannot wrap the disposed texture: " + texture);
             }
 
             var textureNativePointer = GetTextureNativePointer(texture);
 
-            return Texture.WrapD3D11Texture(
+            return RenderDeviceD3D11.WrapTexture(
                 texture,
                 textureNativePointer,
                 texture.Width,
                 texture.Height,
                 texture.LevelCount,
-                isInverted: false);
+                isInverted: false,
+                hasAlpha: true);
         }
 
         private static IntPtr GetTextureNativePointer(Texture2D texture)

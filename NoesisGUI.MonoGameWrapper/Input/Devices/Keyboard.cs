@@ -2,7 +2,6 @@ namespace NoesisGUI.MonoGameWrapper.Input.Devices
 {
     using System;
     using System.Collections.Generic;
-    using System.Diagnostics;
     using System.Runtime.CompilerServices;
     using System.Windows.Forms;
     using Microsoft.Xna.Framework;

@@ -15,7 +15,7 @@
 
         private readonly TimeSpan doubleClickInterval;
 
-        private readonly bool isProcessMiddleButton;
+        private readonly bool isAcceptingMiddleButtonInput;
 
         /// <summary>
         /// Used for double click handling
@@ -23,9 +23,9 @@
         private readonly Dictionary<MouseButton, TimeSpan> lastPressTimeDictionary =
             new();
 
-        private readonly Visual rootVisual;
-
         private readonly Noesis.Keyboard noesisKeyboard;
+
+        private readonly Visual rootVisual;
 
         private readonly View view;
 
@@ -53,7 +53,7 @@
             this.config = config;
 
             this.doubleClickInterval = TimeSpan.FromSeconds(config.InputMouseDoubleClickIntervalSeconds);
-            this.isProcessMiddleButton = config.IsProcessMouseMiddleButton;
+            this.isAcceptingMiddleButtonInput = config.IsAcceptingMouseMiddleButtonInput;
         }
 
         public int ConsumedDeltaWheel { get; private set; }
@@ -82,9 +82,9 @@
             {
                 // don't read input if the game window is not focused
                 state = new MouseState(
-                    previousState.X,
-                    previousState.Y,
-                    previousState.ScrollWheelValue,
+                    x: int.MinValue,
+                    y: int.MinValue,
+                    scrollWheel: 0,
                     leftButton: ButtonState.Released,
                     rightButton: ButtonState.Released,
                     middleButton: ButtonState.Released,
@@ -133,14 +133,14 @@
 
             this.ProcessMouseButtonDown(MouseButton.Left,  state.LeftButton,  previousState.LeftButton);
             this.ProcessMouseButtonDown(MouseButton.Right, state.RightButton, previousState.RightButton);
-            if (this.isProcessMiddleButton)
+            if (this.isAcceptingMiddleButtonInput)
             {
                 this.ProcessMouseButtonDown(MouseButton.Middle, state.MiddleButton, previousState.MiddleButton);
             }
 
             this.ProcessMouseButtonUp(MouseButton.Left,  state.LeftButton,  previousState.LeftButton);
             this.ProcessMouseButtonUp(MouseButton.Right, state.RightButton, previousState.RightButton);
-            if (this.isProcessMiddleButton)
+            if (this.isAcceptingMiddleButtonInput)
             {
                 this.ProcessMouseButtonUp(MouseButton.Middle, state.MiddleButton, previousState.MiddleButton);
             }

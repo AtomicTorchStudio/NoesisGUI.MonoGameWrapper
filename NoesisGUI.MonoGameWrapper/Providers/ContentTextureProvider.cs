@@ -42,15 +42,16 @@
             this.cache.Clear();
         }
 
-        public override void GetTextureInfo(string filename, out uint width, out uint height)
+        public override TextureInfo GetTextureInfo(Uri uri)
         {
+            var filename = uri.GetPath();
             var texture = this.GetTexture(filename);
-            width = (uint)texture.Width;
-            height = (uint)texture.Height;
+            return new TextureInfo(texture.Width, texture.Height);
         }
 
-        public override Texture LoadTexture(string filename)
+        public override Texture LoadTexture(Uri uri)
         {
+            var filename = uri.GetPath();
             var texture2D = this.GetTexture(filename);
             return NoesisTextureHelper.CreateNoesisTexture(texture2D);
         }

@@ -1,20 +1,19 @@
-﻿namespace TestMonoGameNoesisGUI
+﻿namespace TestMonoGameNoesisGUI;
+
+#region
+
+using System;
+
+#endregion
+
+public static class Program
 {
-    #region
-
-    using System;
-
-    #endregion
-
-    public static class Program
+    [STAThread]
+    private static void Main()
     {
-        [STAThread]
-        private static void Main()
+        using (var game = new GameWithNoesis())
         {
-            using (var game = new GameWithNoesis())
-            {
-                game.Run();
-            }
+            game.Run();
         }
     }
 }

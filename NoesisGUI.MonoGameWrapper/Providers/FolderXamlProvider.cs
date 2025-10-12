@@ -1,5 +1,6 @@
 ﻿namespace NoesisGUI.MonoGameWrapper.Providers
 {
+    using System;
     using System.IO;
     using Noesis;
     using Path = System.IO.Path;
@@ -18,8 +19,9 @@
             this.rootPath = rootPath;
         }
 
-        public override Stream LoadXaml(string filename)
+        public override Stream LoadXaml(Uri uri)
         {
+            var filename = uri.GetPath();
             var fullPath = Path.Combine(this.rootPath, filename);
             return File.OpenRead(fullPath);
         }

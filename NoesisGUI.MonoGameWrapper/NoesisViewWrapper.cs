@@ -22,7 +22,7 @@
 
         private readonly TimeSpan startupTotalGameTime;
 
-        private uint antiAlliasingOffscreenSampleCount;
+        private uint antiAliasingOffscreenSampleCount;
 
         private bool isPPAAEnabled;
 
@@ -58,17 +58,17 @@
             this.CreateView();
         }
 
-        public uint AntiAlliasingOffscreenSampleCount
+        public uint AntiAliasingOffscreenSampleCount
         {
-            get => this.antiAlliasingOffscreenSampleCount;
+            get => this.antiAliasingOffscreenSampleCount;
             set
             {
-                if (this.antiAlliasingOffscreenSampleCount == value)
+                if (this.antiAliasingOffscreenSampleCount == value)
                 {
                     return;
                 }
 
-                this.antiAlliasingOffscreenSampleCount = value;
+                this.antiAliasingOffscreenSampleCount = value;
                 // TODO: waiting for a fix https://www.noesisengine.com/bugs/view.php?id=1686
                 // then we can use a new method to apply the change
             }
@@ -236,7 +236,7 @@
 
                 // TODO: increased to deal with the glyph cache crash - refactor to move to NoesisConfig
                 this.renderDeviceD3D11.GlyphCacheWidth = this.renderDeviceD3D11.GlyphCacheHeight = 2048;
-                this.renderDeviceD3D11.OffscreenSampleCount = this.antiAlliasingOffscreenSampleCount;
+                this.renderDeviceD3D11.OffscreenSampleCount = this.antiAliasingOffscreenSampleCount;
                 this.renderer = this.view.Renderer;
                 this.renderer.Init(this.renderDeviceD3D11);
 

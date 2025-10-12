@@ -28,7 +28,7 @@ namespace NoesisGUI.MonoGameWrapper
         /// Is directional (arrow) keys navigation should be enabled? If it's disabled (by default)
         /// arrow key presses will be not passed to NoesisGUI unless it's focused on a textbox.
         /// </param>
-        /// <param name="isProcessMouseMiddleButton">
+        /// <param name="isAcceptingMouseMiddleButtonInput">
         /// Enable processing of the middle (scrollwheel) mouse button (disabled by
         /// default).
         /// </param>
@@ -44,7 +44,7 @@ namespace NoesisGUI.MonoGameWrapper
             Action<string> onDevLogMessageReceived = null,
             Action<Exception> onUnhandledException = null,
             bool isEnableDirectionalNavigation = false,
-            bool isProcessMouseMiddleButton = false)
+            bool isAcceptingMouseMiddleButtonInput = false)
         {
             if (string.IsNullOrEmpty(rootXamlFilePath))
             {
@@ -64,7 +64,7 @@ namespace NoesisGUI.MonoGameWrapper
             this.OnUnhandledException = onUnhandledException;
             this.CurrentTotalGameTime = currentTotalGameTime;
             this.CallbackGetViewport = callbackGetViewport;
-            this.IsProcessMouseMiddleButton = isProcessMouseMiddleButton;
+            this.IsAcceptingMouseMiddleButtonInput = isAcceptingMouseMiddleButtonInput;
             this.NoesisProviderManager = noesisProviderManager;
             this.IsEnableDirectionalNavigation = isEnableDirectionalNavigation;
         }
@@ -85,7 +85,7 @@ namespace NoesisGUI.MonoGameWrapper
 
         internal double InputMouseDoubleClickIntervalSeconds { get; private set; }
 
-        internal bool IsProcessMouseMiddleButton { get; }
+        internal bool IsAcceptingMouseMiddleButtonInput { get; }
 
         internal NoesisProviderManager NoesisProviderManager { get; }
 

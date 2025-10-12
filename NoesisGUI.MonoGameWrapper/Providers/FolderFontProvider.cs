@@ -19,7 +19,7 @@
             this.rootPath = rootPath;
         }
 
-        public override Stream OpenFont(string folder, string id)
+        public override Stream OpenFont(Uri uri, string id)
         {
             var fontPath = id;
             if (File.Exists(fontPath))
@@ -30,8 +30,9 @@
             throw new FileNotFoundException("Font file not found", fontPath);
         }
 
-        public override void ScanFolder(string folder)
+        public override void ScanFolder(Uri uri)
         {
+            var folder = uri.GetPath();
             var folderPath = Path.Combine(this.rootPath, folder);
             if (!Directory.Exists(folderPath))
             {
@@ -45,7 +46,7 @@
                     || fontPath.EndsWith(".otf", StringComparison.OrdinalIgnoreCase)
                     || fontPath.EndsWith(".ttc", StringComparison.OrdinalIgnoreCase))
                 {
-                    this.RegisterFont(folder, fontPath);
+                    this.RegisterFont(uri, fontPath);
                 }
             }
         }

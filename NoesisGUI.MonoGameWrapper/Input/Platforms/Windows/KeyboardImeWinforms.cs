@@ -1,6 +1,7 @@
 ﻿namespace NoesisGUI.MonoGameWrapper.Input.Platforms.Windows
 {
     using System;
+    using System.ComponentModel;
     using System.Diagnostics;
     using System.Runtime.InteropServices;
     using System.Text;
@@ -132,6 +133,10 @@
 
         public void EnableInput(UIElement focused)
         {
+            // IME input disabled due to incompatibility with Steam Deck
+            // (causes screen flash and then unrecoverable stuttering)
+            return;
+
             if (this.isImeInputEnabled)
             {
                 return;
@@ -340,7 +345,7 @@
             Win32Native.ImmReleaseContext(hwnd, context);
         }
 
-        private void WinformsTextBoxOnTextChanged(object sender, EventArgs eventArgs)
+        private void WinformsTextBoxOnTextChanged(object sender, EventArgs args)
         {
             this.CommitTextFromWinformsTextbox();
         }
@@ -387,20 +392,21 @@
 
         public class RichTextBoxEx : RichTextBox
         {
-            const int EM_GETTEXTEX = (WM_USER + 94);
+            private const int EM_GETTEXTEX = (WM_USER + 94);
 
-            const int EM_GETTEXTLENGTHEX = (WM_USER + 95);
+            private const int EM_GETTEXTLENGTHEX = (WM_USER + 95);
 
             // Flags for the GETEXTEX data structure  
-            const int GT_DEFAULT = 0;
+            private const int GT_DEFAULT = 0;
 
-            const int GTL_CLOSE = 4; // Fast computation of a "close" answer 
+            private const int GTL_CLOSE = 4; // Fast computation of a "close" answer 
 
             // Flags for the GETTEXTLENGTHEX data structure 
-            const int GTL_DEFAULT = 0; // Do default (return # of chars) 
+            private const int GTL_DEFAULT = 0; // Do default (return # of chars) 
 
-            const int WM_USER = 0x0400;
+            private const int WM_USER = 0x0400;
 
+            [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
             public override string Text
             {
                 get
@@ -449,21 +455,21 @@
             }
 
             [DllImport("user32.dll", EntryPoint = "SendMessage", CharSet = CharSet.Auto)]
-            static extern int SendMessage(
+            private static extern int SendMessage(
                 IntPtr hWnd,
                 int msg,
                 ref GETTEXTEX wParam,
                 StringBuilder lParam);
 
             [DllImport("user32.dll", EntryPoint = "SendMessage", CharSet = CharSet.Auto)]
-            static extern int SendMessage(
+            private static extern int SendMessage(
                 IntPtr hWnd,
                 int msg,
                 ref GETTEXTLENGTHEX wParam,
                 int lParam);
 
             [StructLayout(LayoutKind.Sequential)]
-            struct GETTEXTEX
+            private struct GETTEXTEX
             {
                 public int cb;
 
@@ -477,7 +483,7 @@
             }
 
             [StructLayout(LayoutKind.Sequential)]
-            struct GETTEXTLENGTHEX
+            private struct GETTEXTLENGTHEX
             {
                 public int flags;
 
