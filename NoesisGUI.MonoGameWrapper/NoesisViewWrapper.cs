@@ -165,6 +165,7 @@
         {
             using (this.deviceState.Remember())
             {
+                this.renderDeviceD3D11.DisableScissorRect();
                 this.renderer.Render();
             }
         }
